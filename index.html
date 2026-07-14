@@ -1,0 +1,2884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomoSpace - Drive & Game Tracker</title>
+    <meta name="description" content="Track your installed games, monitor disk usage across drives, and manage your storage with a modern glassmorphism UI.">
+    <meta name="theme-color" content="#0b0d17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NomoSpace">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230b0d17'/%3E%3Crect x='1' y='1' width='62' height='62' rx='13' fill='none' stroke='url(%23g)' stroke-width='1.5' opacity='0.5'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='900' font-size='38' fill='url(%23g)'%3EN%3C/text%3E%3Ccircle cx='50' cy='14' r='4' fill='%2310b981' opacity='0.8'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --accent: #06b6d4;
+            --accent-glow: rgba(6, 182, 212, 0.3);
+            --accent-soft: rgba(6, 182, 212, 0.12);
+            --bg-deep: #07080e;
+            --bg-base: #0b0d17;
+            --bg-raised: #111322;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-bg-hover: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --glass-border-hover: rgba(255, 255, 255, 0.14);
+            --text-primary: #f0f0f5;
+            --text-secondary: #8888a0;
+            --text-dim: #555570;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --ring-used: var(--accent);
+            --ring-free: rgba(255, 255, 255, 0.06);
+        }
+
+        .theme-morning {
+            --accent: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.3);
+            --accent-soft: rgba(245, 158, 11, 0.12);
+            --ring-used: #f59e0b;
+        }
+        .theme-afternoon {
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --accent-soft: rgba(59, 130, 246, 0.12);
+            --ring-used: #3b82f6;
+        }
+        .theme-evening {
+            --accent: #a855f7;
+            --accent-glow: rgba(168, 85, 247, 0.3);
+            --accent-soft: rgba(168, 85, 247, 0.12);
+            --ring-used: #a855f7;
+        }
+        .theme-night {
+            --accent: #14b8a6;
+            --accent-glow: rgba(20, 184, 166, 0.3);
+            --accent-soft: rgba(20, 184, 166, 0.12);
+            --ring-used: #14b8a6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 20%, var(--accent-glow), transparent),
+                radial-gradient(ellipse 60% 80% at 90% 80%, rgba(168, 85, 247, 0.08), transparent),
+                radial-gradient(ellipse 50% 50% at 50% 50%, rgba(59, 130, 246, 0.04), transparent);
+            pointer-events: none;
+            animation: meshShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes meshShift {
+            0% { opacity: 0.7; transform: scale(1) translate(0, 0); }
+            50% { opacity: 1; transform: scale(1.05) translate(2%, -2%); }
+            100% { opacity: 0.8; transform: scale(1) translate(-1%, 1%); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px rgba(255,255,255,0.02); }
+            50% { box-shadow: 0 0 35px var(--accent-glow), inset 0 0 30px rgba(255,255,255,0.04); }
+        }
+
+        @keyframes ringPulse {
+            0%, 100% { filter: drop-shadow(0 0 4px var(--accent-glow)); }
+            50% { filter: drop-shadow(0 0 10px var(--accent-glow)); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+
+
+        @keyframes toastIn {
+            from { transform: translateX(100%) scale(0.9); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
+        }
+
+        @keyframes toastOut {
+            from { transform: translateX(0) scale(1); opacity: 1; }
+            to { transform: translateX(100%) scale(0.9); opacity: 0; }
+        }
+
+        @keyframes warningPulse {
+            0%, 100% { border-color: var(--danger); box-shadow: 0 0 15px rgba(239, 68, 68, 0.15); }
+            50% { border-color: transparent; box-shadow: none; }
+        }
+
+        @keyframes donutFill {
+            from { stroke-dashoffset: var(--circumference); }
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--glass-border-hover);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--glass-border-hover);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            min-width: 220px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(11, 13, 23, 0.85);
+            backdrop-filter: blur(30px) saturate(1.5);
+            -webkit-backdrop-filter: blur(30px) saturate(1.5);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            overflow-y: auto;
+        }
+
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -1px;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent, var(--accent), transparent);
+            opacity: 0.4;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding: 0 4px;
+        }
+
+        .sidebar-logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--accent-soft);
+            border: 1px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        .sidebar-logo h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            line-height: 1.1;
+        }
+
+        .sidebar-logo h1 span {
+            color: var(--accent);
+            transition: color 0.5s;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: auto;
+        }
+
+        .sidebar-nav-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            font-weight: 700;
+            padding: 0 8px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-tab {
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.2px;
+        }
+
+        .sidebar-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-tab.active {
+            background: var(--accent-soft);
+            color: var(--accent);
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+
+        .sidebar-tab .tab-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-tab .tab-icon.spin {
+            animation: spinSync 0.9s linear infinite;
+        }
+
+        @keyframes spinSync {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .sidebar-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-top: 20px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .sidebar-stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .sidebar-stat .label {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-stat .value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            transition: color 0.5s;
+        }
+
+        .container {
+            flex: 1;
+            min-width: 0;
+            padding: 24px 28px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tabs {
+            display: none;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-content.active { display: block; }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .panel {
+            padding: 22px;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
+
+        .panel:nth-child(2) { animation-delay: 0.05s; }
+        .panel:nth-child(3) { animation-delay: 0.1s; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .panel-header h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-header h2 .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--accent-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        /* Buttons */
+        button.btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.82rem;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 0 4px 24px var(--accent-glow);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.72rem;
+            border-radius: 8px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--glass-bg);
+            border-color: var(--glass-border-hover);
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.25s;
+            font-size: 0.8rem;
+        }
+
+        .btn-icon:hover {
+            color: var(--text-primary);
+            background: var(--glass-bg-hover);
+            border-color: var(--glass-border-hover);
+            transform: scale(1.08);
+        }
+
+        /* Forms */
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .form-group label {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+        }
+
+        input, select {
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow), 0 2px 12px rgba(0,0,0,0.2);
+        }
+
+        input::placeholder { color: var(--text-dim); }
+        select option { background: var(--bg-raised); color: var(--text-primary); }
+
+        /* Drive Cards - Bento */
+        .drive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 14px;
+        }
+
+        .drive-card {
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drive-card.warning-pulse {
+            animation: warningPulse 2s ease-in-out infinite;
+        }
+
+        .drive-card-inner {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .donut-wrap {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+        }
+
+        .donut-wrap svg {
+            transform: rotate(-90deg);
+            width: 80px;
+            height: 80px;
+            animation: ringPulse 3s ease-in-out infinite;
+        }
+
+        .donut-wrap .donut-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .drive-details { flex: 1; min-width: 0; }
+
+        .drive-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .drive-type {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .drive-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-left: 6px;
+        }
+
+        .drive-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .drive-stats .used { color: var(--accent); font-weight: 600; }
+        .drive-stats .free { color: var(--success); font-weight: 600; }
+
+        .drive-actions {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: all 0.25s;
+        }
+
+        .drive-card:hover .drive-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Game Cards */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .game-card {
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        .game-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .game-card-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .game-card-size {
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .game-card-meta {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .badge-drive {
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .badge-installed {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .badge-uninstalled {
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.12);
+        }
+
+        .game-card-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .game-card:hover .game-card-actions { opacity: 1; }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .filter-bar input {
+            flex: 1;
+            min-width: 200px;
+            border: none;
+            background: transparent;
+            padding: 8px 10px;
+        }
+
+        .filter-bar input:focus {
+            box-shadow: none;
+            border: none;
+        }
+
+        .filter-bar select {
+            border: none;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        /* Bento Overview */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(120px, auto);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .bento-card {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bento-card.span-2 { grid-column: span 2; }
+        .bento-card.span-3 { grid-column: span 3; }
+        .bento-card.span-4 { grid-column: span 4; }
+        .bento-card.row-2 { grid-row: span 2; }
+
+        .bento-card .bento-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .bento-card .bento-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+            transition: color 0.5s;
+        }
+
+        .bento-card .bento-value.green { color: var(--success); }
+        .bento-card .bento-value.warning { color: var(--warning); }
+        .bento-card .bento-value.danger { color: var(--danger); }
+
+        .bento-card .bento-sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .bento-big-ring {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            height: 100%;
+        }
+
+        .bento-big-ring svg {
+            width: 140px;
+            height: 140px;
+            transform: rotate(-90deg);
+            flex-shrink: 0;
+        }
+
+        .bento-big-ring .ring-center {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bento-big-ring .ring-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bento-big-ring .ring-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .bento-big-ring .ring-info-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .bento-recent {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            max-height: 160px;
+        }
+
+        .bento-recent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .bento-recent-item .recent-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .bento-recent-item .recent-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .bento-recent-item .recent-time {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        /* Overview Drive Breakdown */
+        .breakdown-item {
+            padding: 18px;
+            margin-bottom: 12px;
+        }
+
+        .breakdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .breakdown-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .breakdown-games {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .progress-fill.warn { background: var(--warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+        .progress-fill.danger { background: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+
+        .breakdown-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .breakdown-info strong { color: var(--text-primary); }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            width: 90%;
+            max-width: 440px;
+            padding: 28px;
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal .form-group { margin-bottom: 14px; }
+
+        .modal input, .modal select { width: 100%; }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 14px;
+            animation: float 3s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        .empty-state p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #fff;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .toast.removing { animation: toastOut 0.3s ease forwards; }
+
+        .toast-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+
+        .toast-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .toast-info {
+            background: var(--accent-soft);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.25s;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .quick-action-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        /* Changelog */
+        .changelog {
+            position: relative;
+            padding-left: 28px;
+        }
+
+        .changelog::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--accent), var(--glass-border), transparent);
+            border-radius: 1px;
+        }
+
+        .changelog-entry {
+            position: relative;
+            padding: 18px 22px;
+            margin-bottom: 16px;
+        }
+
+        .changelog-entry::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 24px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+            border: 2px solid var(--bg-deep);
+        }
+
+        .changelog-version {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .changelog-version .ver {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .changelog-version .date {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .changelog-version .tag {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tag-latest {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .tag-features {
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .tag-fix {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+        }
+
+        .changelog-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .changelog-list li {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding-left: 16px;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .changelog-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .changelog-list li strong {
+            color: var(--text-primary);
+        }
+
+        /* Settings */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .settings-grid > .settings-section:nth-child(1),
+        .settings-grid > .settings-section:nth-child(2),
+        .settings-grid > .settings-section:nth-child(3) {
+            grid-column: 1;
+        }
+        .settings-grid > .settings-section:nth-child(4) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .settings-grid > .settings-section:nth-child(5) {
+            grid-column: 2;
+            grid-row: 2 / 4;
+        }
+        @media (max-width: 740px) {
+            .settings-grid { grid-template-columns: 1fr; }
+            .settings-grid > .settings-section:nth-child(n) { grid-column: auto; grid-row: auto; }
+        }
+
+        .settings-section {
+            padding: 24px;
+        }
+
+        .settings-section h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .settings-section .desc {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .setting-row:last-child { border-bottom: none; }
+
+        .setting-label {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .setting-sub {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 2px;
+            top: 2px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            transition: all 0.3s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+        }
+
+        .toggle input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Theme Selector */
+        .theme-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .theme-option {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .theme-option:hover {
+            border-color: var(--glass-border-hover);
+            color: var(--text-primary);
+        }
+
+        .theme-option.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-soft);
+            box-shadow: 0 2px 8px var(--accent-glow);
+        }
+
+        /* Settings Danger Zone */
+        .danger-zone {
+            border-color: rgba(239, 68, 68, 0.15) !important;
+        }
+
+        .danger-zone h3 { color: var(--danger); }
+
+        .settings-btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        /* Dropbox Sync */
+        .dbx-status {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text-dim);
+            margin-left: 8px;
+        }
+        .dbx-status.connected { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+        .dbx-account-row { font-size: 0.8rem; opacity: 0.75; margin: 4px 0 14px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .dbx-account-row span + span::before { content: '\00b7'; opacity: 0.5; margin-right: 4px; }
+        .dbx-link { color: var(--accent); opacity: 0.7; text-decoration: none; font-weight: 500; transition: opacity 0.2s; }
+        .dbx-link:hover { opacity: 1; text-decoration: underline; }
+        #dbxKey {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 12px;
+        }
+        #dbxKey::placeholder { color: var(--text-dim); }
+        #dbxKey:focus { background: rgba(255,255,255,0.08); border-color: var(--accent); }
+        .dbx-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; margin: 0 0 14px; user-select: none; }
+        .dbx-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .dbx-toggle-track {
+            width: 40px; height: 22px; border-radius: 11px;
+            background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border);
+            position: relative; transition: all 0.3s; flex-shrink: 0;
+        }
+        .dbx-toggle-thumb {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--text-dim); position: absolute; left: 2px; top: 2px;
+            transition: all 0.3s;
+        }
+        .dbx-toggle input:checked + .dbx-toggle-track { background: rgba(16,185,129,0.55); border-color: rgba(110,231,183,0.5); }
+        .dbx-toggle input:checked + .dbx-toggle-track .dbx-toggle-thumb { transform: translateX(18px); background: #6ee7b7; }
+        .dbx-toggle-label { font-size: 0.82rem; opacity: 0.85; line-height: 1.4; }
+
+        /* Ranking */
+        .ranking-section {
+            margin-bottom: 28px;
+        }
+
+        .ranking-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ranking-rank {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .ranking-rank.gold {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+        }
+
+        .ranking-rank.silver {
+            background: rgba(148, 163, 184, 0.12);
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.15);
+        }
+
+        .ranking-rank.bronze {
+            background: rgba(180, 83, 9, 0.12);
+            color: #d97706;
+            border-color: rgba(180, 83, 9, 0.15);
+        }
+
+        .ranking-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ranking-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ranking-meta {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .ranking-bar-wrap {
+            flex: 1;
+            min-width: 100px;
+            max-width: 300px;
+        }
+
+        .ranking-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .ranking-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent-glow);
+        }
+
+        .ranking-bar-fill.drive-bar {
+            background: linear-gradient(90deg, var(--accent), #818cf8);
+        }
+
+        .ranking-bar-fill.game-bar {
+            background: linear-gradient(90deg, var(--success), #34d399);
+        }
+
+        .ranking-size {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            white-space: nowrap;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+        @media (max-width: 900px) {
+            .bento-grid { grid-template-columns: repeat(2, 1fr); }
+            .bento-card.span-3, .bento-card.span-4 { grid-column: span 2; }
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                height: auto;
+                flex-direction: row;
+                padding: 12px 16px;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                position: sticky;
+                top: 0;
+                overflow-x: auto;
+                overflow-y: hidden;
+                align-items: center;
+                gap: 12px;
+            }
+            .sidebar::after { display: none; }
+            .sidebar-logo { margin-bottom: 0; flex-shrink: 0; }
+            .sidebar-logo h1 { font-size: 1rem; }
+            .sidebar-nav {
+                flex-direction: row;
+                gap: 2px;
+                margin-bottom: 0;
+                flex-shrink: 0;
+            }
+            .sidebar-nav-label { display: none; }
+            .sidebar-tab { padding: 8px 12px; font-size: 0.8rem; white-space: nowrap; }
+
+
+        .sidebar-stats {
+                flex-direction: row;
+                gap: 6px;
+                padding-top: 0;
+                border-top: none;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+            .sidebar-stat { padding: 4px 8px; }
+            .sidebar-stat .label { font-size: 0.6rem; }
+            .sidebar-stat .value { font-size: 0.8rem; }
+            .container { padding: 16px; }
+            .bento-grid { grid-template-columns: 1fr; }
+            .bento-card.span-2, .bento-card.span-3, .bento-card.span-4 { grid-column: span 1; }
+            .drive-grid { grid-template-columns: 1fr; }
+            .game-grid { grid-template-columns: 1fr; }
+            .form-row { flex-direction: column; }
+            .form-group { min-width: 100%; }
+            .bento-big-ring { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">N</div>
+        <h1>Nomo<span>Space</span></h1>
+    </div>
+    <div class="sidebar-nav">
+        <div class="sidebar-nav-label">Navigation</div>
+        <button class="sidebar-tab active" data-tab="overview"><span class="tab-icon">&#9632;</span> Overview</button>
+        <button class="sidebar-tab" data-tab="drives"><span class="tab-icon">&#9881;</span> Drives</button>
+        <button class="sidebar-tab" data-tab="games"><span class="tab-icon">&#9733;</span> Games</button>
+        <button class="sidebar-tab" data-tab="ranking"><span class="tab-icon">&#8645;</span> Ranking</button>
+        <div class="sidebar-nav-label" style="margin-top: 16px;">System</div>
+        <button class="sidebar-tab" data-tab="changelog"><span class="tab-icon">&#9830;</span> Changelog</button>
+        <button class="sidebar-tab" id="syncBtn" onclick="syncDropbox()" style="display:none;"><span class="tab-icon" id="syncIcon">&#8635;</span> Sync</button>
+        <button class="sidebar-tab" data-tab="settings"><span class="tab-icon">&#9881;</span> Settings</button>
+    </div>
+    <div class="sidebar-stats">
+        <div class="sidebar-stat">
+            <span class="label">Drives</span>
+            <span class="value" id="totalDrives">0</span>
+        </div>
+        <div class="sidebar-stat">
+            <span class="label">Games</span>
+            <span class="value" id="totalGames">0</span>
+        </div>
+        <div class="sidebar-stat">
+            <span class="label">Used</span>
+            <span class="value" id="totalUsed">0 GB</span>
+        </div>
+    </div>
+</aside>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <!-- OVERVIEW -->
+    <div class="tab-content active" id="tab-overview">
+        <div class="bento-grid" id="bentoGrid"></div>
+        <div class="section-title">Drive Breakdown</div>
+        <div id="overviewBreakdown"></div>
+    </div>
+
+    <!-- DRIVES -->
+    <div class="tab-content" id="tab-drives">
+        <div class="panel glass">
+            <div class="panel-header">
+                <h2><span class="icon">+</span> Add Drive</h2>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Drive Name</label>
+                    <input type="text" id="driveName" placeholder="e.g. C:, D:, External SSD">
+                </div>
+                <div class="form-group">
+                    <label>Total Space (GB)</label>
+                    <input type="number" id="driveTotal" placeholder="500" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="driveType">
+                        <option value="NVMe" selected>NVMe</option>
+                        <option value="SSD">SSD</option>
+                        <option value="HDD">HDD</option>
+                        <option value="External">External</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:0 0 auto; min-width:auto;">
+                    <button class="btn btn-primary" onclick="addDrive()">Add</button>
+                </div>
+            </div>
+        </div>
+        <div class="section-title">Your Drives</div>
+        <div class="drive-grid" id="driveGrid"></div>
+    </div>
+
+    <!-- GAMES -->
+    <div class="tab-content" id="tab-games">
+        <div class="panel glass">
+            <div class="panel-header">
+                <h2><span class="icon">+</span> Add Game</h2>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Game Name</label>
+                    <input type="text" id="gameName" placeholder="e.g. Cyberpunk 2077">
+                </div>
+                <div class="form-group">
+                    <label>Size (GB)</label>
+                    <input type="number" id="gameSize" placeholder="70" min="0.1" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Drive</label>
+                    <select id="gameDrive"></select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="gameStatus">
+                        <option value="installed">Installed</option>
+                        <option value="uninstalled">Not Installed</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:0 0 auto; min-width:auto;">
+                    <button class="btn btn-primary" onclick="addGame()">Add</button>
+                </div>
+            </div>
+        </div>
+        <div class="section-title">Game Library</div>
+        <div class="filter-bar">
+            <input type="text" id="gameSearch" placeholder="Search games..." oninput="renderGames()">
+            <select id="gameFilter" onchange="renderGames()">
+                <option value="all">All</option>
+                <option value="installed">Installed</option>
+                <option value="uninstalled">Not Installed</option>
+            </select>
+        </div>
+        <div class="game-grid" id="gameGrid"></div>
+    </div>
+
+    <!-- RANKING -->
+    <div class="tab-content" id="tab-ranking">
+        <div class="section-title">Games by Drive</div>
+        <div id="rankingGames"></div>
+    </div>
+
+    <!-- CHANGELOG -->
+    <div class="tab-content" id="tab-changelog">
+        <div class="section-title">Version History</div>
+        <div class="changelog" id="changelogList"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-content" id="tab-settings">
+        <div class="section-title">Settings</div>
+        <div class="settings-grid">
+            <div class="settings-section glass">
+                <h3>&#127912; Appearance</h3>
+                <div class="desc">Customize how NomoSpace looks and feels.</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Auto Theme (Time-based)</div>
+                        <div class="setting-sub">Shifts accent color based on time of day</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="settingAutoTheme" checked onchange="toggleAutoTheme()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="manualThemeSection" style="display:none; margin-top: 12px;">
+                    <div class="setting-label" style="margin-bottom: 8px;">Manual Theme</div>
+                    <div class="theme-options">
+                        <button class="theme-option" data-theme="theme-morning" onclick="setManualTheme('theme-morning')">&#9728; Morning</button>
+                        <button class="theme-option" data-theme="theme-afternoon" onclick="setManualTheme('theme-afternoon')">&#9729; Afternoon</button>
+                        <button class="theme-option" data-theme="theme-evening" onclick="setManualTheme('theme-evening')">&#127769; Evening</button>
+                        <button class="theme-option" data-theme="theme-night" onclick="setManualTheme('theme-night')">&#127761; Night</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section glass">
+                <h3>&#128190; Data Management</h3>
+                <div class="desc">Export, import, or clear your drives and games data.</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Export Data</div>
+                        <div class="setting-sub">Download all data as a JSON file</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="exportData()">Export</button>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Import Data</div>
+                        <div class="setting-sub">Load data from a previously exported file</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Storage Used</div>
+                        <div class="setting-sub" id="storageUsed">Calculating...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section glass danger-zone">
+                <h3>&#9888; Danger Zone</h3>
+                <div class="desc">Irreversible actions. Please be careful.</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Clear All Drives</div>
+                        <div class="setting-sub">Remove all drives from the tracker</div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="clearDrives()">Clear</button>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Clear All Games</div>
+                        <div class="setting-sub">Remove all games from the library</div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="clearGames()">Clear</button>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Reset Everything</div>
+                        <div class="setting-sub">Delete all data and reset to defaults</div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="resetAll()">Reset All</button>
+                </div>
+            </div>
+
+            <div class="settings-section glass">
+                <h3>&#9432; About</h3>
+                <div class="desc">Information about NomoSpace.</div>
+                <div class="setting-row">
+                    <div class="setting-label">Version</div>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.0</span>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">Storage Engine</div>
+                    <span style="font-size:0.85rem;color:var(--text-secondary);">localStorage</span>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">Total Entries</div>
+                    <span style="font-size:0.85rem;color:var(--text-secondary);" id="totalEntries">0</span>
+                </div>
+            </div>
+
+            <div class="settings-section glass">
+                <h3>&#9729; Dropbox Sync <span id="dbxStatus" class="dbx-status"></span></h3>
+                <div class="desc">Sync through your own Dropbox account so your drives and games are available on all your devices. Your data goes straight from your browser to Dropbox — never through any server of ours.</div>
+                <div id="dbxSetup">
+                    <label style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px;display:block;">Dropbox App key <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener" class="dbx-link">(get one free)</a></label>
+                    <input type="text" id="dbxKey" placeholder="e.g. abcd1234efgh567" autocomplete="off" spellcheck="false">
+                    <div class="settings-btn-row">
+                        <button class="btn btn-primary btn-sm" onclick="dropboxConnect()">Connect to Dropbox</button>
+                    </div>
+                </div>
+                <div id="dbxConnected" style="display:none">
+                    <p class="dbx-account-row"><span id="dbxAccount"></span><span id="dbxLastSync">never synced</span></p>
+                    <label class="dbx-toggle">
+                        <input type="checkbox" id="dbxAutoUpload" onchange="dropboxSetAutoUpload(this.checked)">
+                        <span class="dbx-toggle-track"><span class="dbx-toggle-thumb"></span></span>
+                        <span class="dbx-toggle-label">Auto-upload changes 10 seconds after you stop editing</span>
+                    </label>
+                    <label class="dbx-toggle">
+                        <input type="checkbox" id="dbxAutoSync" onchange="dropboxSetAutoSync(this.checked)">
+                        <span class="dbx-toggle-track"><span class="dbx-toggle-thumb"></span></span>
+                        <span class="dbx-toggle-label">Auto-sync newer backups when the app opens</span>
+                    </label>
+                    <div class="settings-btn-row">
+                        <button class="btn btn-ghost btn-sm" onclick="dropboxUpload()">&#11014; Upload</button>
+                        <button class="btn btn-ghost btn-sm" onclick="dropboxDownload()">&#11015; Download</button>
+                        <button class="btn btn-danger btn-sm" onclick="dropboxDisconnect()">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+    <div class="modal glass">
+        <h3 id="modalTitle">Edit</h3>
+        <div id="modalBody"></div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="modalSave">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dropbox Sync Prompt -->
+<div class="modal-overlay" id="dbxSyncOverlay">
+    <div class="modal glass">
+        <h2>Newer backup on Dropbox</h2>
+        <p style="font-size:0.85rem;color:var(--text-secondary);margin:10px 0 20px;line-height:1.6;">Your Dropbox backup was updated <b id="dbxSyncWhen"></b> — probably from another device. Downloading it will replace what's on this device.</p>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" id="dbxSyncLater">Not now</button>
+            <button class="btn btn-primary" id="dbxSyncNow">&#11015; Sync now</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Data ──
+    let drives = JSON.parse(localStorage.getItem('ns_drives') || '[]');
+    let games = JSON.parse(localStorage.getItem('ns_games') || '[]');
+    let recentActivity = JSON.parse(localStorage.getItem('ns_recent') || '[]');
+
+    // ── Emotionally Intelligent Theme ──
+    function getTimeTheme() {
+        const h = new Date().getHours();
+        if (h >= 6 && h < 12) return 'theme-morning';
+        if (h >= 12 && h < 18) return 'theme-afternoon';
+        if (h >= 18 && h < 22) return 'theme-evening';
+        return 'theme-night';
+    }
+
+    function applyTheme() {
+        document.body.className = getTimeTheme();
+    }
+
+    applyTheme();
+    setInterval(applyTheme, 60000);
+
+    // ── Hyper-Personalization ──
+    function getSavedTab() {
+        return localStorage.getItem('ns_lastTab') || 'overview';
+    }
+
+    function saveTab(tab) {
+        localStorage.setItem('ns_lastTab', tab);
+    }
+
+    function addRecent(type, name) {
+        recentActivity.unshift({
+            type,
+            name,
+            time: Date.now()
+        });
+        if (recentActivity.length > 1) recentActivity = recentActivity.slice(0, 1);
+        localStorage.setItem('ns_recent', JSON.stringify(recentActivity));
+    }
+
+    function timeAgo(ts) {
+        const diff = Date.now() - ts;
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return hrs + 'h ago';
+        return Math.floor(hrs / 24) + 'd ago';
+    }
+
+    // ── Save ──
+    function save() {
+        localStorage.setItem('ns_drives', JSON.stringify(drives));
+        localStorage.setItem('ns_games', JSON.stringify(games));
+        scheduleAutoUpload();
+    }
+
+    // ── Helpers ──
+    function formatSize(gb) {
+        if (gb >= 1000) return (gb / 1000).toFixed(1) + ' TB';
+        return gb.toFixed(1) + ' GB';
+    }
+
+    function getUsagePercent(drive) {
+        const used = games
+            .filter(g => g.driveId === drive.id && g.status === 'installed')
+            .reduce((sum, g) => sum + g.size, 0);
+        return { used, percent: Math.min((used / drive.total) * 100, 100) };
+    }
+
+    function getProgressClass(percent) {
+        if (percent >= 90) return 'danger';
+        if (percent >= 70) return 'warn';
+        return '';
+    }
+
+    // ── SVG Donut ──
+    function createDonut(percent, size = 80, stroke = 7) {
+        const r = (size - stroke) / 2;
+        const circ = 2 * Math.PI * r;
+        const offset = circ - (percent / 100) * circ;
+        const color = percent >= 90 ? 'var(--danger)' : percent >= 70 ? 'var(--warning)' : 'var(--accent)';
+        return `
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                <circle cx="${size/2}" cy="${size/2}" r="${r}"
+                    fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="${stroke}"/>
+                <circle cx="${size/2}" cy="${size/2}" r="${r}"
+                    fill="none" stroke="${color}" stroke-width="${stroke}"
+                    stroke-linecap="round"
+                    stroke-dasharray="${circ}"
+                    stroke-dashoffset="${offset}"
+                    style="--circumference:${circ}; animation: donutFill 1s ease-out forwards; filter: drop-shadow(0 0 6px ${color});">
+                </circle>
+            </svg>
+        `;
+    }
+
+    // ── Toast ──
+    function toast(msg, type = 'success') {
+        const icons = { success: '&#10003;', error: '&#10007;', info: '&#9432;' };
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `<span>${icons[type] || ''}</span> ${msg}`;
+        document.getElementById('toastContainer').appendChild(el);
+        setTimeout(() => {
+            el.classList.add('removing');
+            setTimeout(() => el.remove(), 300);
+        }, 2500);
+    }
+
+    // ── Tabs ──
+    function switchTab(tabName) {
+        document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        const tabBtn = document.querySelector(`.sidebar-tab[data-tab="${tabName}"]`);
+        if (tabBtn) tabBtn.classList.add('active');
+        const tabContent = document.getElementById('tab-' + tabName);
+        if (tabContent) tabContent.classList.add('active');
+        saveTab(tabName);
+        renderAll();
+    }
+
+    document.querySelectorAll('.sidebar-tab').forEach(tab => {
+        tab.addEventListener('click', () => { if (tab.dataset.tab) switchTab(tab.dataset.tab); });
+    });
+
+    // ── Drives ──
+    function addDrive() {
+        const name = document.getElementById('driveName').value.trim();
+        const total = parseFloat(document.getElementById('driveTotal').value);
+        const type = document.getElementById('driveType').value;
+        if (!name || !total || total <= 0) return toast('Invalid drive info', 'error');
+
+        drives.push({ id: Date.now().toString(), name, total, type });
+        save();
+        addRecent('drive', name);
+        document.getElementById('driveName').value = '';
+        document.getElementById('driveTotal').value = '';
+        toast(`Drive "${name}" added`);
+        renderAll();
+    }
+
+    function removeDrive(id) {
+        const drive = drives.find(d => d.id === id);
+        if (!confirm(`Remove "${drive?.name}"? Games will keep their drive reference.`)) return;
+        drives = drives.filter(d => d.id !== id);
+        save();
+        toast(`Drive removed`, 'info');
+        renderAll();
+    }
+
+    function editDrive(id) {
+        const drive = drives.find(d => d.id === id);
+        if (!drive) return;
+
+        document.getElementById('modalTitle').innerHTML = '<span class="icon" style="width:28px;height:28px;border-radius:8px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:0.85rem;">E</span> Edit Drive';
+        document.getElementById('modalBody').innerHTML = `
+            <div class="form-group">
+                <label>Drive Name</label>
+                <input type="text" id="editDriveName" value="${drive.name}">
+            </div>
+            <div class="form-group">
+                <label>Total Space (GB)</label>
+                <input type="number" id="editDriveTotal" value="${drive.total}" min="1">
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="editDriveType">
+                    <option value="NVMe" ${drive.type === 'NVMe' ? 'selected' : ''}>NVMe</option>
+                    <option value="SSD" ${drive.type === 'SSD' ? 'selected' : ''}>SSD</option>
+                    <option value="HDD" ${drive.type === 'HDD' ? 'selected' : ''}>HDD</option>
+                    <option value="External" ${drive.type === 'External' ? 'selected' : ''}>External</option>
+                </select>
+            </div>
+        `;
+        document.getElementById('modalSave').onclick = () => {
+            drive.name = document.getElementById('editDriveName').value.trim();
+            drive.total = parseFloat(document.getElementById('editDriveTotal').value);
+            drive.type = document.getElementById('editDriveType').value;
+            if (drive.name && drive.total > 0) {
+                save();
+                addRecent('drive', drive.name);
+                closeModal();
+                toast(`Drive "${drive.name}" updated`);
+                renderAll();
+            }
+        };
+        document.getElementById('modal').classList.add('active');
+    }
+
+    function renderDrives() {
+        const grid = document.getElementById('driveGrid');
+        if (drives.length === 0) {
+            grid.innerHTML = '<div class="empty-state"><div class="icon">&#128190;</div><p>No drives yet. Add one above to get started.</p></div>';
+            return;
+        }
+        grid.innerHTML = [...drives].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
+            const { used, percent } = getUsagePercent(d);
+            const free = d.total - used;
+            const isWarning = percent >= 85;
+            return `
+                <div class="drive-card glass${isWarning ? ' warning-pulse' : ''}" style="animation: fadeInUp 0.4s ease both;">
+                    <div class="drive-actions">
+                        <button class="btn-icon" onclick="editDrive('${d.id}')" title="Edit">&#9998;</button>
+                        <button class="btn-icon" onclick="removeDrive('${d.id}')" title="Remove" style="color:var(--danger);">&#10005;</button>
+                    </div>
+                    <div class="drive-card-inner">
+                        <div class="donut-wrap">
+                            ${createDonut(percent)}
+                            <div class="donut-text">${Math.round(percent)}%</div>
+                        </div>
+                        <div class="drive-details">
+                            <div class="drive-name">${d.name}</div>
+                            <div class="drive-type">${d.type} <span class="drive-type-badge">${d.type}</span></div>
+                            <div class="drive-stats">
+                                <span class="used">${formatSize(used)} used</span>
+                                <span class="free">${formatSize(free)} free</span>
+                            </div>
+                            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;">Total: ${formatSize(d.total)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ── Games ──
+    function addGame() {
+        const name = document.getElementById('gameName').value.trim();
+        const size = parseFloat(document.getElementById('gameSize').value);
+        const driveId = document.getElementById('gameDrive').value;
+        const status = document.getElementById('gameStatus').value;
+        if (!name || !size || size <= 0) return toast('Invalid game info', 'error');
+
+        games.push({ id: Date.now().toString(), name, size, driveId, status });
+        save();
+        addRecent('game', name);
+        document.getElementById('gameName').value = '';
+        document.getElementById('gameSize').value = '';
+        toast(`"${name}" added`);
+        renderAll();
+    }
+
+    function removeGame(id) {
+        games = games.filter(g => g.id !== id);
+        save();
+        toast('Game removed', 'info');
+        renderAll();
+    }
+
+    function toggleGameStatus(id) {
+        const game = games.find(g => g.id === id);
+        if (game) {
+            game.status = game.status === 'installed' ? 'uninstalled' : 'installed';
+            save();
+            addRecent('game', game.name);
+            toast(`"${game.name}" ${game.status === 'installed' ? 'installed' : 'uninstalled'}`);
+            renderAll();
+        }
+    }
+
+    function editGame(id) {
+        const game = games.find(g => g.id === id);
+        if (!game) return;
+
+        const driveOptions = drives.map(d =>
+            `<option value="${d.id}" ${d.id === game.driveId ? 'selected' : ''}>${d.name}</option>`
+        ).join('');
+
+        document.getElementById('modalTitle').innerHTML = '<span class="icon" style="width:28px;height:28px;border-radius:8px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:0.85rem;">E</span> Edit Game';
+        document.getElementById('modalBody').innerHTML = `
+            <div class="form-group">
+                <label>Game Name</label>
+                <input type="text" id="editGameName" value="${game.name}">
+            </div>
+            <div class="form-group">
+                <label>Size (GB)</label>
+                <input type="number" id="editGameSize" value="${game.size}" min="0.1" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Drive</label>
+                <select id="editGameDrive">${driveOptions}</select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="editGameStatus">
+                    <option value="installed" ${game.status === 'installed' ? 'selected' : ''}>Installed</option>
+                    <option value="uninstalled" ${game.status === 'uninstalled' ? 'selected' : ''}>Not Installed</option>
+                </select>
+            </div>
+        `;
+        document.getElementById('modalSave').onclick = () => {
+            game.name = document.getElementById('editGameName').value.trim();
+            game.size = parseFloat(document.getElementById('editGameSize').value);
+            game.driveId = document.getElementById('editGameDrive').value;
+            game.status = document.getElementById('editGameStatus').value;
+            if (game.name && game.size > 0) {
+                save();
+                addRecent('game', game.name);
+                closeModal();
+                toast(`"${game.name}" updated`);
+                renderAll();
+            }
+        };
+        document.getElementById('modal').classList.add('active');
+    }
+
+    function renderGames() {
+        const search = document.getElementById('gameSearch').value.toLowerCase();
+        const filter = document.getElementById('gameFilter').value;
+        const container = document.getElementById('gameGrid');
+
+        let filtered = games.filter(g => {
+            if (filter !== 'all' && g.status !== filter) return false;
+            if (search && !g.name.toLowerCase().includes(search)) return false;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">&#127918;</div><p>No games found. Add one above.</p></div>';
+            return;
+        }
+
+        container.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map((g, i) => {
+            const drive = drives.find(d => d.id === g.driveId);
+            return `
+                <div class="game-card glass" style="animation: fadeInUp 0.4s ${i * 0.03}s ease both;">
+                    <div class="game-card-header">
+                        <div class="game-card-name">${g.name}</div>
+                        <div class="game-card-size">${formatSize(g.size)}</div>
+                    </div>
+                    <div class="game-card-meta">
+                        <span class="badge badge-drive">${drive ? drive.name : 'Unknown'}</span>
+                        <span class="badge ${g.status === 'installed' ? 'badge-installed' : 'badge-uninstalled'}">
+                            ${g.status === 'installed' ? '&#10003; Installed' : '&#10005; Not Installed'}
+                        </span>
+                    </div>
+                    <div class="game-card-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="toggleGameStatus('${g.id}')">
+                            ${g.status === 'installed' ? 'Eject' : 'Install'}
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="editGame('${g.id}')">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="removeGame('${g.id}')">Remove</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ── Overview / Bento ──
+    function renderOverview() {
+        const totalSpace = drives.reduce((s, d) => s + d.total, 0);
+        const installedGames = games.filter(g => g.status === 'installed');
+        const totalUsed = installedGames.reduce((s, g) => s + g.size, 0);
+        const totalRequired = games.reduce((s, g) => s + g.size, 0);
+        const freeSpace = Math.max(totalSpace - totalUsed, 0);
+        const percent = totalSpace > 0 ? (totalUsed / totalSpace) * 100 : 0;
+
+        const recentHtml = recentActivity.length > 0
+            ? recentActivity.map(r => `
+                <div class="bento-recent-item">
+                    <div class="recent-dot" style="background:${r.type === 'drive' ? 'var(--accent)' : 'var(--success)'}"></div>
+                    <span class="recent-name">${r.name}</span>
+                    <span class="recent-time">${timeAgo(r.time)}</span>
+                </div>
+            `).join('')
+            : '<div style="font-size:0.8rem;color:var(--text-dim);text-align:center;padding:20px;">No recent activity</div>';
+
+        document.getElementById('bentoGrid').innerHTML = `
+            <div class="bento-card glass span-2 row-2" style="animation: fadeInUp 0.4s ease both;">
+                <div class="bento-label">Storage Overview</div>
+                <div class="bento-big-ring" style="position:relative;">
+                    <div style="position:relative;">
+                        <svg width="140" height="140" viewBox="0 0 140 140" style="transform:rotate(-90deg);">
+                            <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="12"/>
+                            <circle cx="70" cy="70" r="58" fill="none"
+                                stroke="var(--accent)" stroke-width="12" stroke-linecap="round"
+                                stroke-dasharray="${2 * Math.PI * 58}"
+                                stroke-dashoffset="${2 * Math.PI * 58 - (percent / 100) * 2 * Math.PI * 58}"
+                                style="filter: drop-shadow(0 0 8px var(--accent-glow)); transition: stroke-dashoffset 1s ease;">
+                            </circle>
+                        </svg>
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+                            <div style="font-size:1.6rem;font-weight:800;color:var(--text-primary);">${Math.round(percent)}%</div>
+                            <div style="font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Used</div>
+                        </div>
+                    </div>
+                    <div class="ring-info">
+                        <div class="ring-info-item">
+                            <div class="ring-info-dot" style="background:var(--accent);"></div>
+                            <span>Used: <strong style="color:var(--text-primary);">${formatSize(totalUsed)}</strong></span>
+                        </div>
+                        <div class="ring-info-item">
+                            <div class="ring-info-dot" style="background:var(--success);"></div>
+                            <span>Free: <strong style="color:var(--text-primary);">${formatSize(freeSpace)}</strong></span>
+                        </div>
+                        <div class="ring-info-item">
+                            <div class="ring-info-dot" style="background:var(--warning);"></div>
+                            <span>Total: <strong style="color:var(--text-primary);">${formatSize(totalSpace)}</strong></span>
+                        </div>
+                        <div class="ring-info-item">
+                            <div class="ring-info-dot" style="background:var(--danger);"></div>
+                            <span>Required: <strong style="color:var(--text-primary);">${formatSize(totalRequired)}</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card glass" style="animation: fadeInUp 0.4s 0.05s ease both;">
+                <div class="bento-label">Drives</div>
+                <div class="bento-value">${drives.length}</div>
+                <div class="bento-sub">Total drives</div>
+            </div>
+
+            <div class="bento-card glass" style="animation: fadeInUp 0.4s 0.1s ease both;">
+                <div class="bento-label">Installed</div>
+                <div class="bento-value green">${installedGames.length}</div>
+                <div class="bento-sub">Games installed</div>
+            </div>
+
+            <div class="bento-card glass" style="animation: fadeInUp 0.4s 0.15s ease both;">
+                <div class="bento-label">Total Games</div>
+                <div class="bento-value">${games.length}</div>
+                <div class="bento-sub">In library</div>
+            </div>
+
+            <div class="bento-card glass" style="animation: fadeInUp 0.4s 0.2s ease both;">
+                <div class="bento-label">Free Space</div>
+                <div class="bento-value green">${formatSize(freeSpace)}</div>
+                <div class="bento-sub">Available</div>
+            </div>
+
+            <div class="bento-card glass span-2" style="animation: fadeInUp 0.4s 0.25s ease both;">
+                <div class="bento-label">Quick Actions</div>
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="switchTab('drives')">
+                        <span>&#43;</span> Add Drive
+                    </button>
+                    <button class="quick-action-btn" onclick="switchTab('games')">
+                        <span>&#43;</span> Add Game
+                    </button>
+                    <button class="quick-action-btn" onclick="switchTab('overview')">
+                        <span>&#9776;</span> Overview
+                    </button>
+                </div>
+            </div>
+
+            <div class="bento-card glass span-2" style="animation: fadeInUp 0.4s 0.3s ease both;">
+                <div class="bento-label">Recently Updated</div>
+                <div class="bento-recent">
+                    ${recentHtml}
+                </div>
+            </div>
+        `;
+
+        const breakdown = document.getElementById('overviewBreakdown');
+        if (drives.length === 0) {
+            breakdown.innerHTML = '<div class="empty-state glass panel"><div class="icon">&#128190;</div><p>Add drives to see breakdown.</p></div>';
+            return;
+        }
+
+        breakdown.innerHTML = drives.map((d, i) => {
+            const { used, percent: dPercent } = getUsagePercent(d);
+            const free = d.total - used;
+            const driveGames = games.filter(g => g.driveId === d.id);
+            const installedCount = driveGames.filter(g => g.status === 'installed').length;
+            const requiredSize = driveGames.reduce((s, g) => s + g.size, 0);
+            const pClass = getProgressClass(dPercent);
+
+            return `
+                <div class="breakdown-item glass" style="animation: fadeInUp 0.4s ${i * 0.05}s ease both;">
+                    <div class="breakdown-header">
+                        <div class="breakdown-name">
+                            ${d.name}
+                            <span class="drive-type-badge">${d.type}</span>
+                        </div>
+                        <div class="breakdown-games">${installedCount} installed / ${driveGames.length} total</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${pClass}" style="width:${dPercent}%"></div>
+                    </div>
+                    <div class="breakdown-info">
+                        <span>Used: <strong style="color:var(--accent);">${formatSize(used)}</strong> of ${formatSize(d.total)}</span>
+                        <span>Free: <strong style="color:var(--success);">${formatSize(free)}</strong></span>
+                        <span>Required: <strong style="color:var(--warning);">${formatSize(requiredSize)}</strong></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ── Populate Drive Select ──
+    function populateDriveSelect() {
+        const sel = document.getElementById('gameDrive');
+        sel.innerHTML = drives.length === 0
+            ? '<option value="">No drives - add one first</option>'
+            : drives.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    // ── Header Stats ──
+    function updateHeaderStats() {
+        document.getElementById('totalDrives').textContent = drives.length;
+        document.getElementById('totalGames').textContent = games.filter(g => g.status === 'installed').length;
+        const totalUsed = games.filter(g => g.status === 'installed').reduce((s, g) => s + g.size, 0);
+        document.getElementById('totalUsed').textContent = formatSize(totalUsed);
+    }
+
+    // ── Modal ──
+    function closeModal() {
+        document.getElementById('modal').classList.remove('active');
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('modal')) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // ── Enter key submit ──
+    document.getElementById('driveName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addDrive(); });
+    document.getElementById('driveTotal').addEventListener('keydown', (e) => { if (e.key === 'Enter') addDrive(); });
+    document.getElementById('gameName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addGame(); });
+    document.getElementById('gameSize').addEventListener('keydown', (e) => { if (e.key === 'Enter') addGame(); });
+
+    // ── Ranking ──
+    function renderRanking() {
+        const gamesContainer = document.getElementById('rankingGames');
+        if (!gamesContainer) return;
+
+        if (games.length === 0) {
+            gamesContainer.innerHTML = '<div class="empty-state glass panel" style="padding:30px;"><div class="icon">&#127918;</div><p>No games to rank yet.</p></div>';
+            return;
+        }
+
+        const grouped = {};
+        drives.forEach(d => { grouped[d.id] = { drive: d, games: [] }; });
+        games.forEach(g => {
+            if (grouped[g.driveId]) grouped[g.driveId].games.push(g);
+            else {
+                if (!grouped['_none']) grouped['_none'] = { drive: { name: 'Unknown', type: '', total: 0 }, games: [] };
+                grouped['_none'].games.push(g);
+            }
+        });
+
+        const maxGameSize = Math.max(...games.map(g => g.size), 1);
+
+        gamesContainer.innerHTML = Object.values(grouped)
+            .filter(g => g.games.length > 0)
+            .sort((a, b) => b.games.reduce((s, g) => s + g.size, 0) - a.games.reduce((s, g) => s + g.size, 0))
+            .map((group, gi) => {
+                const sorted = [...group.games].sort((a, b) => b.size - a.size);
+                const totalSize = sorted.reduce((s, g) => s + g.size, 0);
+                return `
+                    <div class="ranking-section" style="animation: fadeInUp 0.4s ${gi * 0.08}s ease both;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span style="font-weight:800;font-size:1.05rem;color:var(--text-primary);">${group.drive.name}</span>
+                                ${group.drive.type ? `<span class="drive-type-badge">${group.drive.type}</span>` : ''}
+                            </div>
+                            <span style="font-size:0.8rem;color:var(--text-dim);">${sorted.length} game${sorted.length > 1 ? 's' : ''} &middot; ${formatSize(totalSize)}</span>
+                        </div>
+                        <div class="ranking-list">
+                            ${sorted.map((g, i) => {
+                                const barWidth = (g.size / maxGameSize) * 100;
+                                const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+                                return `
+                                    <div class="ranking-item glass">
+                                        <div class="ranking-rank ${rankClass}">${i + 1}</div>
+                                        <div class="ranking-info">
+                                            <div class="ranking-name">${g.name}</div>
+                                            <div class="ranking-meta">${g.status === 'installed' ? 'Installed' : 'Not Installed'}</div>
+                                        </div>
+                                        <div class="ranking-bar-wrap">
+                                            <div class="ranking-bar">
+                                                <div class="ranking-bar-fill game-bar" style="width:${barWidth}%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="ranking-size">${formatSize(g.size)}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+    }
+
+    // ── Changelog ──
+    function renderChangelog() {
+        const entries = [
+            {
+                version: '1.0.0',
+                date: 'July 2026',
+                tag: 'latest',
+                tagLabel: 'Latest',
+                changes: [
+                    '<strong>Initial release</strong> of NomoSpace drive & game tracker',
+                    'Add, edit, and remove drives with usage tracking',
+                    'Add, edit, and remove games with install status',
+                    'SVG donut charts for drive usage visualization',
+                    'Bento Grid overview dashboard',
+                    'Glassmorphism 2.0 design with spatial depth',
+                    'Emotionally intelligent color palette (time-of-day shifting)',
+                    'Hyper-personalization: last tab memory, recent activity',
+                    'Micro-interactions: hover glows, card lifts, toast notifications',
+                    'Left sidebar navigation layout',
+                    'Export / Import data as JSON',
+                    'Changelog and Settings pages',
+                    '<strong>Dropbox Sync</strong> — sync drives & games across devices via your own Dropbox account (OAuth2 PKCE)',
+                    'Mock mode for testing Dropbox sync without a real account',
+                    '<strong>PWA Support</strong> — installable as a Progressive Web App with offline caching',
+                    'Service Worker for offline access',
+                    'Alphabetical sorting for drives and games',
+                ]
+            },
+        ];
+
+        const container = document.getElementById('changelogList');
+        if (!container) return;
+
+        container.innerHTML = entries.map(e => `
+            <div class="changelog-entry glass" style="animation: fadeInUp 0.4s ease both;">
+                <div class="changelog-version">
+                    <span class="ver">v${e.version}</span>
+                    <span class="date">${e.date}</span>
+                    <span class="tag tag-${e.tag}">${e.tagLabel}</span>
+                </div>
+                <ul class="changelog-list">
+                    ${e.changes.map(c => `<li>${c}</li>`).join('')}
+                </ul>
+            </div>
+        `).join('');
+    }
+
+    // ── Settings ──
+    function getAutoTheme() {
+        return localStorage.getItem('ns_autoTheme') !== 'false';
+    }
+
+    function getManualTheme() {
+        return localStorage.getItem('ns_manualTheme') || 'theme-night';
+    }
+
+    function toggleAutoTheme() {
+        const auto = document.getElementById('settingAutoTheme').checked;
+        localStorage.setItem('ns_autoTheme', auto);
+        document.getElementById('manualThemeSection').style.display = auto ? 'none' : 'block';
+        if (auto) {
+            applyTheme();
+        } else {
+            document.body.className = getManualTheme();
+            updateThemeOptions();
+        }
+    }
+
+    function setManualTheme(theme) {
+        localStorage.setItem('ns_manualTheme', theme);
+        document.body.className = theme;
+        updateThemeOptions();
+    }
+
+    function updateThemeOptions() {
+        const current = document.body.className;
+        document.querySelectorAll('.theme-option').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === current);
+        });
+    }
+
+    function exportData() {
+        const data = {
+            version: '1.0.0',
+            exportedAt: new Date().toISOString(),
+            drives,
+            games
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nomospace-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Data exported successfully');
+    }
+
+    function importData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (data.drives && data.games) {
+                    drives = data.drives;
+                    games = data.games;
+                    save();
+                    renderAll();
+                    toast(`Imported ${drives.length} drives and ${games.length} games`);
+                } else {
+                    toast('Invalid backup file', 'error');
+                }
+            } catch {
+                toast('Failed to parse file', 'error');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    }
+
+    function clearDrives() {
+        if (!confirm('Remove ALL drives? This cannot be undone.')) return;
+        drives = [];
+        save();
+        renderAll();
+        toast('All drives cleared', 'info');
+    }
+
+    function clearGames() {
+        if (!confirm('Remove ALL games? This cannot be undone.')) return;
+        games = [];
+        save();
+        renderAll();
+        toast('All games cleared', 'info');
+    }
+
+    function resetAll() {
+        if (!confirm('Delete ALL data? This will reset everything.')) return;
+        if (!confirm('Are you really sure? This is irreversible.')) return;
+        drives = [];
+        games = [];
+        recentActivity = [];
+        localStorage.removeItem('ns_drives');
+        localStorage.removeItem('ns_games');
+        localStorage.removeItem('ns_recent');
+        localStorage.removeItem('ns_lastTab');
+        localStorage.removeItem('ns_dbx');
+        renderAll();
+        toast('All data has been reset', 'info');
+    }
+
+    function updateStorageInfo() {
+        let total = 0;
+        for (const key of ['ns_drives', 'ns_games', 'ns_recent', 'ns_lastTab', 'ns_autoTheme', 'ns_manualTheme', 'ns_dbx']) {
+            const val = localStorage.getItem(key);
+            if (val) total += val.length * 2;
+        }
+        const el = document.getElementById('storageUsed');
+        if (el) {
+            if (total < 1024) el.textContent = total + ' bytes';
+            else if (total < 1048576) el.textContent = (total / 1024).toFixed(1) + ' KB';
+            else el.textContent = (total / 1048576).toFixed(1) + ' MB';
+        }
+        const entries = document.getElementById('totalEntries');
+        if (entries) entries.textContent = drives.length + games.length;
+    }
+
+    // ── Dropbox Sync (OAuth2 PKCE, no backend) ──
+    const DBX_KEY = 'ns_dbx';
+    const DBX_PATH = '/nomospace-backup.json';
+    let dbx = JSON.parse(localStorage.getItem(DBX_KEY) || 'null') ||
+        { appKey: '', accessToken: '', refreshToken: '', expiresAt: 0, account: '', lastSync: '', lastSyncAt: 0, dismissedRemoteAt: 0, autoSync: false, autoUpload: false };
+    const dbxSave = () => localStorage.setItem(DBX_KEY, JSON.stringify(dbx));
+    const dbxRedirectUri = () => location.origin + location.pathname;
+
+    let _syncTimer = null, _skipAutoUpload = false, _lastUploadedState = '', _syncing = false;
+    function scheduleAutoUpload() {
+        if (!dbx.accessToken || !dbx.autoUpload) return;
+        if (_skipAutoUpload) { _skipAutoUpload = false; return; }
+        clearTimeout(_syncTimer);
+        _syncTimer = setTimeout(() => dropboxUpload(true), 10000);
+    }
+
+    function b64url(buf) {
+        return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function randomString(len) {
+        const a = new Uint8Array(len); crypto.getRandomValues(a); return b64url(a).slice(0, len);
+    }
+    async function pkceChallenge(verifier) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+        return b64url(digest);
+    }
+
+    async function dropboxConnect() {
+        const key = document.getElementById('dbxKey').value.trim();
+        if (!key) { toast('Enter your Dropbox App key first', 'error'); return; }
+
+        if (key === 'mock') {
+            dbx.appKey = 'mock';
+            dbx.accessToken = 'mock_token_' + randomString(20);
+            dbx.refreshToken = 'mock_refresh_' + randomString(20);
+            dbx.expiresAt = Date.now() + 86400000;
+            dbx.account = 'demo@nomospace.app';
+            dbx.lastSync = new Date().toLocaleString();
+            dbx.lastSyncAt = Date.now();
+            dbx.autoUpload = false;
+            dbx.autoSync = false;
+            dbxSave();
+            updateDropboxUI();
+            toast('Mock Dropbox connected');
+            return;
+        }
+
+        if (!isSecureContext) { toast('Dropbox sync needs HTTPS or localhost', 'error'); return; }
+        dbx.appKey = key; dbxSave();
+        const verifier = randomString(64);
+        sessionStorage.setItem('ns.dbx.verifier', verifier);
+        const challenge = await pkceChallenge(verifier);
+        location.href = 'https://www.dropbox.com/oauth2/authorize?' + new URLSearchParams({
+            client_id: key, response_type: 'code', code_challenge: challenge, code_challenge_method: 'S256',
+            token_access_type: 'offline', redirect_uri: dbxRedirectUri()
+        });
+    }
+
+    async function dropboxHandleRedirect() {
+        const params = new URLSearchParams(location.search);
+        const code = params.get('code');
+        if (!code) return;
+        history.replaceState(null, '', location.pathname + location.hash);
+        switchTab('settings');
+        const verifier = sessionStorage.getItem('ns.dbx.verifier');
+        if (!verifier || !dbx.appKey) return;
+        try {
+            const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ code, grant_type: 'authorization_code', client_id: dbx.appKey, code_verifier: verifier, redirect_uri: dbxRedirectUri() })
+            });
+            const j = await res.json();
+            if (!res.ok) throw new Error(j.error_description || j.error || 'auth failed');
+            dbx.accessToken = j.access_token; dbx.refreshToken = j.refresh_token || dbx.refreshToken;
+            dbx.expiresAt = Date.now() + (j.expires_in || 14400) * 1000; dbxSave();
+            await dropboxFetchAccount();
+            toast('Dropbox connected');
+            dropboxCheckForUpdates();
+        } catch (err) { toast('Dropbox connection failed: ' + err.message, 'error'); }
+        updateDropboxUI();
+    }
+
+    async function dropboxRefreshIfNeeded() {
+        if (dbx.accessToken && Date.now() < dbx.expiresAt - 30000) return true;
+        if (!dbx.refreshToken || !dbx.appKey) return !!dbx.accessToken;
+        try {
+            const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: dbx.refreshToken, client_id: dbx.appKey })
+            });
+            const j = await res.json();
+            if (!res.ok) return false;
+            dbx.accessToken = j.access_token; dbx.expiresAt = Date.now() + (j.expires_in || 14400) * 1000; dbxSave();
+            return true;
+        } catch { return false; }
+    }
+
+    async function dropboxFetchAccount() {
+        try {
+            const res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+                method: 'POST', headers: { 'Authorization': 'Bearer ' + dbx.accessToken }
+            });
+            if (res.ok) { const j = await res.json(); dbx.account = j.email || (j.name && j.name.display_name) || ''; dbxSave(); }
+        } catch {}
+    }
+
+    function dbxParseBackup(text) {
+        const parsed = JSON.parse(text);
+        const d = parsed && parsed.data ? parsed.data : parsed;
+        if (!d || !Array.isArray(d.drives) || !Array.isArray(d.games)) throw new Error('bad backup format');
+        return d;
+    }
+    function dbxApplyData(d) {
+        drives = d.drives || [];
+        games = d.games || [];
+        _lastUploadedState = JSON.stringify({ drives, games });
+        _skipAutoUpload = true;
+        save(); renderAll();
+    }
+
+    async function dropboxUpload(silent) {
+        if (!await dropboxRefreshIfNeeded()) { if (!silent) toast('Dropbox session expired — reconnect', 'error'); return; }
+        const snapshot = JSON.stringify({ drives, games });
+        if (silent && snapshot === _lastUploadedState) return;
+        if (dbx.appKey === 'mock') {
+            _lastUploadedState = snapshot;
+            dbx.lastSync = new Date().toLocaleString(); dbx.lastSyncAt = Date.now(); dbxSave(); updateDropboxUI();
+            toast(silent ? 'Auto-synced to Dropbox (mock)' : 'Uploaded to Dropbox (mock)');
+            return;
+        }
+        const payload = { app: 'NomoSpace', version: 1, exportedAt: new Date().toISOString(), data: { drives, games } };
+        try {
+            const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                method: 'POST', headers: {
+                    'Authorization': 'Bearer ' + dbx.accessToken, 'Content-Type': 'application/octet-stream',
+                    'Dropbox-API-Arg': JSON.stringify({ path: DBX_PATH, mode: 'overwrite', mute: true })
+                }, body: JSON.stringify(payload, null, 2)
+            });
+            if (!res.ok) throw new Error('upload failed (' + res.status + ')');
+            _lastUploadedState = snapshot;
+            dbx.lastSync = new Date().toLocaleString(); dbx.lastSyncAt = Date.now(); dbxSave(); updateDropboxUI();
+            toast(silent ? 'Auto-synced to Dropbox' : 'Uploaded to Dropbox');
+        } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function dropboxDownload(skipConfirm) {
+        if (!await dropboxRefreshIfNeeded()) { toast('Dropbox session expired — reconnect', 'error'); return; }
+        if (dbx.appKey === 'mock') {
+            if (!skipConfirm && !confirm('Download from Dropbox? It will replace all your current drives and games.')) return;
+            dbx.lastSync = new Date().toLocaleString(); dbx.lastSyncAt = Date.now(); dbxSave(); updateDropboxUI();
+            toast('Synced from Dropbox (mock)');
+            return;
+        }
+        try {
+            const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+                method: 'POST', headers: {
+                    'Authorization': 'Bearer ' + dbx.accessToken,
+                    'Dropbox-API-Arg': JSON.stringify({ path: DBX_PATH })
+                }
+            });
+            if (res.status === 409) { toast('No backup in Dropbox yet — upload one first', 'info'); return; }
+            if (!res.ok) throw new Error('download failed (' + res.status + ')');
+            const d = dbxParseBackup(await res.text());
+            if (!skipConfirm && !confirm('Download from Dropbox? It will replace all your current drives and games.')) return;
+            dbxApplyData(d);
+            dbx.lastSync = new Date().toLocaleString(); dbx.lastSyncAt = Date.now(); dbxSave(); updateDropboxUI();
+            toast('Synced from Dropbox');
+        } catch (err) { toast(err.message === 'bad backup format' ? 'Dropbox file isn\'t a NomoSpace backup' : err.message, 'error'); }
+    }
+
+    async function dropboxDisconnect() {
+        if (!confirm('Disconnect Dropbox? You can reconnect any time with your App key.')) return;
+        dbx = { appKey: dbx.appKey, accessToken: '', refreshToken: '', expiresAt: 0, account: '', lastSync: '', lastSyncAt: 0, dismissedRemoteAt: 0, autoSync: false, autoUpload: false };
+        dbxSave(); updateDropboxUI(); toast('Dropbox disconnected', 'info');
+    }
+
+    function dropboxSetAutoUpload(on) {
+        dbx.autoUpload = !!on; dbxSave();
+        toast(on ? 'Auto-upload enabled' : 'Auto-upload disabled', 'info');
+        if (!on) clearTimeout(_syncTimer);
+    }
+
+    function dropboxSetAutoSync(on) {
+        dbx.autoSync = !!on; dbxSave();
+        toast(on ? 'Auto-sync on launch enabled' : 'Auto-sync on launch disabled', 'info');
+        if (on) dropboxCheckForUpdates();
+    }
+
+    async function dropboxCheckForUpdates() {
+        if (!dbx.accessToken || dbx.appKey === 'mock') return;
+        if (!await dropboxRefreshIfNeeded()) return;
+        try {
+            const res = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
+                method: 'POST', headers: { 'Authorization': 'Bearer ' + dbx.accessToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: DBX_PATH })
+            });
+            if (!res.ok) return;
+            const j = await res.json();
+            const remoteAt = Date.parse(j.server_modified || '');
+            if (!remoteAt) return;
+            if (remoteAt > (dbx.lastSyncAt || 0) + 5000 && remoteAt !== dbx.dismissedRemoteAt) {
+                if (dbx.autoSync) dropboxDownload(true);
+                else openDbxSyncPrompt(remoteAt);
+            }
+        } catch {}
+    }
+
+    let _dbxPendingRemoteAt = 0;
+    function openDbxSyncPrompt(remoteAt) {
+        _dbxPendingRemoteAt = remoteAt;
+        document.getElementById('dbxSyncWhen').textContent = new Date(remoteAt).toLocaleString();
+        document.getElementById('dbxSyncOverlay').classList.add('show');
+    }
+    function closeDbxSyncPrompt() {
+        if (_dbxPendingRemoteAt) { dbx.dismissedRemoteAt = _dbxPendingRemoteAt; dbxSave(); }
+        document.getElementById('dbxSyncOverlay').classList.remove('show');
+    }
+
+    function updateDropboxUI() {
+        const setup = document.getElementById('dbxSetup');
+        const connected = document.getElementById('dbxConnected');
+        const st = document.getElementById('dbxStatus');
+        const syncBtn = document.getElementById('syncBtn');
+        if (!setup) return;
+        document.getElementById('dbxKey').value = dbx.appKey || '';
+        const isConnected = !!dbx.accessToken;
+        setup.style.display = isConnected ? 'none' : 'block';
+        connected.style.display = isConnected ? 'block' : 'none';
+        document.getElementById('dbxAccount').textContent = dbx.account ? 'Connected as ' + dbx.account : 'Connected';
+        document.getElementById('dbxLastSync').textContent = dbx.lastSync ? 'last synced ' + dbx.lastSync : 'never synced';
+        document.getElementById('dbxAutoUpload').checked = !!dbx.autoUpload;
+        document.getElementById('dbxAutoSync').checked = !!dbx.autoSync;
+        st.textContent = isConnected ? 'Connected' : 'Not connected';
+        st.classList.toggle('connected', isConnected);
+        if (syncBtn) syncBtn.style.display = isConnected ? '' : 'none';
+    }
+
+    async function syncDropbox() {
+        if (!dbx.accessToken || _syncing) return;
+        _syncing = true;
+        const icon = document.getElementById('syncIcon');
+        if (icon) icon.classList.add('spin');
+        await dropboxUpload(true);
+        await dropboxCheckForUpdates();
+        if (icon) icon.classList.remove('spin');
+        _syncing = false;
+    }
+
+    // ── Render All ──
+    function renderAll() {
+        renderDrives();
+        populateDriveSelect();
+        renderGames();
+        renderOverview();
+        renderRanking();
+        renderChangelog();
+        updateHeaderStats();
+        updateStorageInfo();
+        updateThemeOptions();
+        updateDropboxUI();
+    }
+
+    // ── Init ──
+    if (!getAutoTheme()) {
+        document.getElementById('settingAutoTheme').checked = false;
+        document.getElementById('manualThemeSection').style.display = 'block';
+        document.body.className = getManualTheme();
+        updateThemeOptions();
+    }
+    updateDropboxUI();
+    dropboxHandleRedirect();
+    dropboxCheckForUpdates();
+    document.getElementById('dbxSyncLater').onclick = closeDbxSyncPrompt;
+    document.getElementById('dbxSyncNow').onclick = () => { dropboxDownload(true); closeDbxSyncPrompt(); };
+    document.getElementById('dbxSyncOverlay').addEventListener('click', e => { if (e.target === document.getElementById('dbxSyncOverlay')) closeDbxSyncPrompt(); });
+    switchTab(getSavedTab());
+
+    // ── PWA Service Worker ──
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+</script>
+
+</body>
+</html>
