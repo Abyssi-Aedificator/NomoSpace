@@ -70,6 +70,20 @@
             display: flex;
         }
 
+        .dev-banner {
+            background: linear-gradient(90deg, #dc2626, #b91c1c);
+            color: #fff;
+            text-align: center;
+            padding: 6px 16px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
         body::before {
             content: '';
             position: fixed;
@@ -1128,6 +1142,12 @@
             border: 1px solid rgba(16, 185, 129, 0.15);
         }
 
+        .tag-stable {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+
         .tag-features {
             background: rgba(99, 102, 241, 0.12);
             color: #818cf8;
@@ -1554,6 +1574,8 @@
 </head>
 <body>
 
+<div class="dev-banner" id="devBanner" style="display:none">🔧 Development Build</div>
+
 <aside class="sidebar">
     <div class="sidebar-logo">
         <div class="sidebar-logo-icon">N</div>
@@ -1610,6 +1632,10 @@
                 <div class="form-group">
                     <label>Total Space (GB)</label>
                     <input type="number" id="driveTotal" placeholder="500" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Already Taken (GB)</label>
+                    <input type="number" id="driveTaken" placeholder="0" min="0" step="0.1">
                 </div>
                 <div class="form-group">
                     <label>Type</label>
@@ -1769,7 +1795,7 @@
                 <div class="desc">Information about NomoSpace.</div>
                 <div class="setting-row">
                     <div class="setting-label">Version</div>
-                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.0</span>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.1</span>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label">Storage Engine</div>
@@ -1903,10 +1929,11 @@
     }
 
     function getUsagePercent(drive) {
-        const used = games
+        const gameUsed = games
             .filter(g => g.driveId === drive.id && g.status === 'installed')
             .reduce((sum, g) => sum + g.size, 0);
-        return { used, percent: Math.min((used / drive.total) * 100, 100) };
+        const used = gameUsed + (drive.taken || 0);
+        return { used, gameUsed, taken: drive.taken || 0, percent: Math.min((used / drive.total) * 100, 100) };
     }
 
     function getProgressClass(percent) {
@@ -1969,14 +1996,16 @@
     function addDrive() {
         const name = document.getElementById('driveName').value.trim();
         const total = parseFloat(document.getElementById('driveTotal').value);
+        const taken = parseFloat(document.getElementById('driveTaken').value) || 0;
         const type = document.getElementById('driveType').value;
         if (!name || !total || total <= 0) return toast('Invalid drive info', 'error');
 
-        drives.push({ id: Date.now().toString(), name, total, type });
+        drives.push({ id: Date.now().toString(), name, total, taken, type });
         save();
         addRecent('drive', name);
         document.getElementById('driveName').value = '';
         document.getElementById('driveTotal').value = '';
+        document.getElementById('driveTaken').value = '';
         toast(`Drive "${name}" added`);
         renderAll();
     }
@@ -2005,6 +2034,10 @@
                 <input type="number" id="editDriveTotal" value="${drive.total}" min="1">
             </div>
             <div class="form-group">
+                <label>Already Taken (GB)</label>
+                <input type="number" id="editDriveTaken" value="${drive.taken || 0}" min="0" step="0.1">
+            </div>
+            <div class="form-group">
                 <label>Type</label>
                 <select id="editDriveType">
                     <option value="NVMe" ${drive.type === 'NVMe' ? 'selected' : ''}>NVMe</option>
@@ -2017,6 +2050,7 @@
         document.getElementById('modalSave').onclick = () => {
             drive.name = document.getElementById('editDriveName').value.trim();
             drive.total = parseFloat(document.getElementById('editDriveTotal').value);
+            drive.taken = parseFloat(document.getElementById('editDriveTaken').value) || 0;
             drive.type = document.getElementById('editDriveType').value;
             if (drive.name && drive.total > 0) {
                 save();
@@ -2036,7 +2070,7 @@
             return;
         }
         grid.innerHTML = [...drives].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
-            const { used, percent } = getUsagePercent(d);
+            const { used, gameUsed, taken, percent } = getUsagePercent(d);
             const free = d.total - used;
             const isWarning = percent >= 85;
             return `
@@ -2057,6 +2091,7 @@
                                 <span class="used">${formatSize(used)} used</span>
                                 <span class="free">${formatSize(free)} free</span>
                             </div>
+                            ${taken > 0 ? `<div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;">Games: ${formatSize(gameUsed)} &middot; Other: ${formatSize(taken)}</div>` : ''}
                             <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;">Total: ${formatSize(d.total)}</div>
                         </div>
                     </div>
@@ -2191,8 +2226,9 @@
     // ── Overview / Bento ──
     function renderOverview() {
         const totalSpace = drives.reduce((s, d) => s + d.total, 0);
+        const totalTaken = drives.reduce((s, d) => s + (d.taken || 0), 0);
         const installedGames = games.filter(g => g.status === 'installed');
-        const totalUsed = installedGames.reduce((s, g) => s + g.size, 0);
+        const totalUsed = installedGames.reduce((s, g) => s + g.size, 0) + totalTaken;
         const totalRequired = games.reduce((s, g) => s + g.size, 0);
         const freeSpace = Math.max(totalSpace - totalUsed, 0);
         const percent = totalSpace > 0 ? (totalUsed / totalSpace) * 100 : 0;
@@ -2342,7 +2378,8 @@
     function updateHeaderStats() {
         document.getElementById('totalDrives').textContent = drives.length;
         document.getElementById('totalGames').textContent = games.filter(g => g.status === 'installed').length;
-        const totalUsed = games.filter(g => g.status === 'installed').reduce((s, g) => s + g.size, 0);
+        const totalTaken = drives.reduce((s, d) => s + (d.taken || 0), 0);
+        const totalUsed = games.filter(g => g.status === 'installed').reduce((s, g) => s + g.size, 0) + totalTaken;
         document.getElementById('totalUsed').textContent = formatSize(totalUsed);
     }
 
@@ -2432,10 +2469,19 @@
     function renderChangelog() {
         const entries = [
             {
-                version: '1.0.0',
+                version: '1.0.1',
                 date: 'July 2026',
                 tag: 'latest',
                 tagLabel: 'Latest',
+                changes: [
+                    '<strong>Already Taken</strong> — manually track non-game space usage on each drive',
+                ]
+            },
+            {
+                version: '1.0.0',
+                date: 'July 2026',
+                tag: 'stable',
+                tagLabel: 'Stable',
                 changes: [
                     '<strong>Initial release</strong> of NomoSpace drive & game tracker',
                     'Add, edit, and remove drives with usage tracking',
@@ -2511,7 +2557,7 @@
 
     function exportData() {
         const data = {
-            version: '1.0.0',
+            version: '1.0.1',
             exportedAt: new Date().toISOString(),
             drives,
             games
