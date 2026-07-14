@@ -1,4 +1,4 @@
-const CACHE = 'nomospace-v1';
+const CACHE = 'nomospace-v1.0.2';
 const ASSETS = [
     './',
     './index.html',

@@ -1795,7 +1795,7 @@
                 <div class="desc">Information about NomoSpace.</div>
                 <div class="setting-row">
                     <div class="setting-label">Version</div>
-                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.1</span>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.2</span>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label">Storage Engine</div>
@@ -1869,6 +1869,7 @@
     let drives = JSON.parse(localStorage.getItem('ns_drives') || '[]');
     let games = JSON.parse(localStorage.getItem('ns_games') || '[]');
     let recentActivity = JSON.parse(localStorage.getItem('ns_recent') || '[]');
+    const CURRENT_VERSION = '1.0.2';
 
     // ── Emotionally Intelligent Theme ──
     function getTimeTheme() {
@@ -1888,11 +1889,10 @@
 
     // ── Hyper-Personalization ──
     function getSavedTab() {
-        return localStorage.getItem('ns_lastTab') || 'overview';
+        return 'overview';
     }
 
     function saveTab(tab) {
-        localStorage.setItem('ns_lastTab', tab);
     }
 
     function addRecent(type, name) {
@@ -2469,10 +2469,21 @@
     function renderChangelog() {
         const entries = [
             {
-                version: '1.0.1',
+                version: '1.0.2',
                 date: 'July 2026',
                 tag: 'latest',
                 tagLabel: 'Latest',
+                changes: [
+                    '<strong>Update notification</strong> — toast alert when a new version is available, with link to changelog',
+                    '<strong>PWA update fix</strong> — service worker now versioned and forces update check on page load',
+                    'App always opens on Overview tab',
+                ]
+            },
+            {
+                version: '1.0.1',
+                date: 'July 2026',
+                tag: 'stable',
+                tagLabel: 'Stable',
                 changes: [
                     '<strong>Already Taken</strong> — manually track non-game space usage on each drive',
                 ]
@@ -2557,7 +2568,7 @@
 
     function exportData() {
         const data = {
-            version: '1.0.1',
+            version: '1.0.2',
             exportedAt: new Date().toISOString(),
             drives,
             games
@@ -2922,8 +2933,26 @@
 
     // ── PWA Service Worker ──
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.update();
+        }).catch(() => {});
     }
+
+    // ── Version Check ──
+    const storedVersion = localStorage.getItem('ns_version');
+    if (storedVersion && storedVersion !== CURRENT_VERSION) {
+        setTimeout(() => {
+            const el = document.createElement('div');
+            el.className = 'toast toast-info';
+            el.style.animationDuration = '0.3s';
+            el.style.cursor = 'pointer';
+            el.innerHTML = `<span>&#9432;</span> NomoSpace updated to v${CURRENT_VERSION} — <strong>What's New?</strong>`;
+            el.onclick = () => { el.remove(); switchTab('changelog'); };
+            document.getElementById('toastContainer').appendChild(el);
+            setTimeout(() => { if (el.parentNode) { el.classList.add('removing'); setTimeout(() => el.remove(), 300); } }, 8000);
+        }, 1000);
+    }
+    localStorage.setItem('ns_version', CURRENT_VERSION);
 </script>
 
 </body>
