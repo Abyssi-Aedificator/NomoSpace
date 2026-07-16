@@ -837,43 +837,6 @@
             flex-shrink: 0;
         }
 
-        .bento-recent {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            overflow-y: auto;
-            max-height: 160px;
-        }
-
-        .bento-recent-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-        }
-
-        .bento-recent-item .recent-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-            flex-shrink: 0;
-        }
-
-        .bento-recent-item .recent-name {
-            color: var(--text-primary);
-            font-weight: 600;
-            flex: 1;
-        }
-
-        .bento-recent-item .recent-time {
-            font-size: 0.7rem;
-            color: var(--text-dim);
-        }
 
         /* Overview Drive Breakdown */
         .breakdown-item {
@@ -1038,39 +1001,6 @@
             color: var(--accent);
         }
 
-        /* Quick Actions */
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .quick-action-btn {
-            flex: 1;
-            min-width: 120px;
-            padding: 14px;
-            border-radius: 12px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 0.82rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.25s;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-
-        .quick-action-btn:hover {
-            color: var(--accent);
-            border-color: var(--accent);
-            background: var(--accent-soft);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px var(--accent-glow);
-        }
 
         /* Changelog */
         .changelog {
@@ -1795,7 +1725,7 @@
                 <div class="desc">Information about NomoSpace.</div>
                 <div class="setting-row">
                     <div class="setting-label">Version</div>
-                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.2</span>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.4</span>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label">Storage Engine</div>
@@ -1855,7 +1785,7 @@
 <!-- Dropbox Sync Prompt -->
 <div class="modal-overlay" id="dbxSyncOverlay">
     <div class="modal glass">
-        <h2>Newer backup on Dropbox</h2>
+        <h3>Newer backup on Dropbox</h3>
         <p style="font-size:0.85rem;color:var(--text-secondary);margin:10px 0 20px;line-height:1.6;">Your Dropbox backup was updated <b id="dbxSyncWhen"></b> — probably from another device. Downloading it will replace what's on this device.</p>
         <div class="modal-actions">
             <button class="btn btn-ghost" id="dbxSyncLater">Not now</button>
@@ -1869,7 +1799,12 @@
     let drives = JSON.parse(localStorage.getItem('ns_drives') || '[]');
     let games = JSON.parse(localStorage.getItem('ns_games') || '[]');
     let recentActivity = JSON.parse(localStorage.getItem('ns_recent') || '[]');
-    const CURRENT_VERSION = '1.0.2';
+    const CURRENT_VERSION = '1.0.4';
+
+    // ── Utilities ──
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    let _idCounter = 0;
+    function genId() { return Date.now().toString(36) + '-' + (++_idCounter); }
 
     // ── Emotionally Intelligent Theme ──
     function getTimeTheme() {
@@ -1885,7 +1820,7 @@
     }
 
     applyTheme();
-    setInterval(applyTheme, 60000);
+    setInterval(() => { if (getAutoTheme()) applyTheme(); }, 60000);
 
     // ── Hyper-Personalization ──
     function getSavedTab() {
@@ -1901,7 +1836,7 @@
             name,
             time: Date.now()
         });
-        if (recentActivity.length > 1) recentActivity = recentActivity.slice(0, 1);
+        if (recentActivity.length > 10) recentActivity = recentActivity.slice(0, 10);
         localStorage.setItem('ns_recent', JSON.stringify(recentActivity));
     }
 
@@ -1933,7 +1868,7 @@
             .filter(g => g.driveId === drive.id && g.status === 'installed')
             .reduce((sum, g) => sum + g.size, 0);
         const used = gameUsed + (drive.taken || 0);
-        return { used, gameUsed, taken: drive.taken || 0, percent: Math.min((used / drive.total) * 100, 100) };
+        return { used, gameUsed, taken: drive.taken || 0, percent: drive.total > 0 ? Math.min((used / drive.total) * 100, 100) : 0 };
     }
 
     function getProgressClass(percent) {
@@ -2000,7 +1935,7 @@
         const type = document.getElementById('driveType').value;
         if (!name || !total || total <= 0) return toast('Invalid drive info', 'error');
 
-        drives.push({ id: Date.now().toString(), name, total, taken, type });
+        drives.push({ id: genId(), name, total, taken, type });
         save();
         addRecent('drive', name);
         document.getElementById('driveName').value = '';
@@ -2012,7 +1947,8 @@
 
     function removeDrive(id) {
         const drive = drives.find(d => d.id === id);
-        if (!confirm(`Remove "${drive?.name}"? Games will keep their drive reference.`)) return;
+        if (!drive) return;
+        if (!confirm(`Remove "${drive.name}"? Games will keep their drive reference.`)) return;
         drives = drives.filter(d => d.id !== id);
         save();
         toast(`Drive removed`, 'info');
@@ -2027,7 +1963,7 @@
         document.getElementById('modalBody').innerHTML = `
             <div class="form-group">
                 <label>Drive Name</label>
-                <input type="text" id="editDriveName" value="${drive.name}">
+                <input type="text" id="editDriveName" value="${esc(drive.name)}">
             </div>
             <div class="form-group">
                 <label>Total Space (GB)</label>
@@ -2085,7 +2021,7 @@
                             <div class="donut-text">${Math.round(percent)}%</div>
                         </div>
                         <div class="drive-details">
-                            <div class="drive-name">${d.name}</div>
+                            <div class="drive-name">${esc(d.name)}</div>
                             <div class="drive-type">${d.type} <span class="drive-type-badge">${d.type}</span></div>
                             <div class="drive-stats">
                                 <span class="used">${formatSize(used)} used</span>
@@ -2107,8 +2043,9 @@
         const driveId = document.getElementById('gameDrive').value;
         const status = document.getElementById('gameStatus').value;
         if (!name || !size || size <= 0) return toast('Invalid game info', 'error');
+        if (!driveId) return toast('Please add a drive first', 'error');
 
-        games.push({ id: Date.now().toString(), name, size, driveId, status });
+        games.push({ id: genId(), name, size, driveId, status });
         save();
         addRecent('game', name);
         document.getElementById('gameName').value = '';
@@ -2140,14 +2077,14 @@
         if (!game) return;
 
         const driveOptions = drives.map(d =>
-            `<option value="${d.id}" ${d.id === game.driveId ? 'selected' : ''}>${d.name}</option>`
+            `<option value="${d.id}" ${d.id === game.driveId ? 'selected' : ''}>${esc(d.name)}</option>`
         ).join('');
 
         document.getElementById('modalTitle').innerHTML = '<span class="icon" style="width:28px;height:28px;border-radius:8px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:0.85rem;">E</span> Edit Game';
         document.getElementById('modalBody').innerHTML = `
             <div class="form-group">
                 <label>Game Name</label>
-                <input type="text" id="editGameName" value="${game.name}">
+                <input type="text" id="editGameName" value="${esc(game.name)}">
             </div>
             <div class="form-group">
                 <label>Size (GB)</label>
@@ -2202,7 +2139,7 @@
             return `
                 <div class="game-card glass" style="animation: fadeInUp 0.4s ${i * 0.03}s ease both;">
                     <div class="game-card-header">
-                        <div class="game-card-name">${g.name}</div>
+                        <div class="game-card-name">${esc(g.name)}</div>
                         <div class="game-card-size">${formatSize(g.size)}</div>
                     </div>
                     <div class="game-card-meta">
@@ -2232,16 +2169,6 @@
         const totalRequired = games.reduce((s, g) => s + g.size, 0);
         const freeSpace = Math.max(totalSpace - totalUsed, 0);
         const percent = totalSpace > 0 ? (totalUsed / totalSpace) * 100 : 0;
-
-        const recentHtml = recentActivity.length > 0
-            ? recentActivity.map(r => `
-                <div class="bento-recent-item">
-                    <div class="recent-dot" style="background:${r.type === 'drive' ? 'var(--accent)' : 'var(--success)'}"></div>
-                    <span class="recent-name">${r.name}</span>
-                    <span class="recent-time">${timeAgo(r.time)}</span>
-                </div>
-            `).join('')
-            : '<div style="font-size:0.8rem;color:var(--text-dim);text-align:center;padding:20px;">No recent activity</div>';
 
         document.getElementById('bentoGrid').innerHTML = `
             <div class="bento-card glass span-2 row-2" style="animation: fadeInUp 0.4s ease both;">
@@ -2306,28 +2233,6 @@
                 <div class="bento-value green">${formatSize(freeSpace)}</div>
                 <div class="bento-sub">Available</div>
             </div>
-
-            <div class="bento-card glass span-2" style="animation: fadeInUp 0.4s 0.25s ease both;">
-                <div class="bento-label">Quick Actions</div>
-                <div class="quick-actions">
-                    <button class="quick-action-btn" onclick="switchTab('drives')">
-                        <span>&#43;</span> Add Drive
-                    </button>
-                    <button class="quick-action-btn" onclick="switchTab('games')">
-                        <span>&#43;</span> Add Game
-                    </button>
-                    <button class="quick-action-btn" onclick="switchTab('overview')">
-                        <span>&#9776;</span> Overview
-                    </button>
-                </div>
-            </div>
-
-            <div class="bento-card glass span-2" style="animation: fadeInUp 0.4s 0.3s ease both;">
-                <div class="bento-label">Recently Updated</div>
-                <div class="bento-recent">
-                    ${recentHtml}
-                </div>
-            </div>
         `;
 
         const breakdown = document.getElementById('overviewBreakdown');
@@ -2348,7 +2253,7 @@
                 <div class="breakdown-item glass" style="animation: fadeInUp 0.4s ${i * 0.05}s ease both;">
                     <div class="breakdown-header">
                         <div class="breakdown-name">
-                            ${d.name}
+                            ${esc(d.name)}
                             <span class="drive-type-badge">${d.type}</span>
                         </div>
                         <div class="breakdown-games">${installedCount} installed / ${driveGames.length} total</div>
@@ -2371,7 +2276,7 @@
         const sel = document.getElementById('gameDrive');
         sel.innerHTML = drives.length === 0
             ? '<option value="">No drives - add one first</option>'
-            : drives.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+            : drives.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
     }
 
     // ── Header Stats ──
@@ -2434,7 +2339,7 @@
                     <div class="ranking-section" style="animation: fadeInUp 0.4s ${gi * 0.08}s ease both;">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">
                             <div style="display:flex;align-items:center;gap:10px;">
-                                <span style="font-weight:800;font-size:1.05rem;color:var(--text-primary);">${group.drive.name}</span>
+                                <span style="font-weight:800;font-size:1.05rem;color:var(--text-primary);">${esc(group.drive.name)}</span>
                                 ${group.drive.type ? `<span class="drive-type-badge">${group.drive.type}</span>` : ''}
                             </div>
                             <span style="font-size:0.8rem;color:var(--text-dim);">${sorted.length} game${sorted.length > 1 ? 's' : ''} &middot; ${formatSize(totalSize)}</span>
@@ -2447,7 +2352,7 @@
                                     <div class="ranking-item glass">
                                         <div class="ranking-rank ${rankClass}">${i + 1}</div>
                                         <div class="ranking-info">
-                                            <div class="ranking-name">${g.name}</div>
+                                            <div class="ranking-name">${esc(g.name)}</div>
                                             <div class="ranking-meta">${g.status === 'installed' ? 'Installed' : 'Not Installed'}</div>
                                         </div>
                                         <div class="ranking-bar-wrap">
@@ -2469,10 +2374,32 @@
     function renderChangelog() {
         const entries = [
             {
-                version: '1.0.2',
+                version: '1.0.4',
                 date: 'July 2026',
                 tag: 'latest',
                 tagLabel: 'Latest',
+                changes: [
+                    '<strong>Fixed: Dropbox sync prompt</strong> — overlay now correctly toggles visibility (class mismatch fix)',
+                    '<strong>Fixed: Manual theme override</strong> — auto-theme interval no longer overwrites user-selected theme',
+                    '<strong>Fixed: Reset Everything</strong> — now fully clears Dropbox state and theme preferences',
+                    '<strong>Fixed: Async sync prompt</strong> — download completes before marking backup as dismissed',
+                    '<strong>Fixed: XSS prevention</strong> — all user-provided names are now HTML-escaped',
+                    '<strong>Fixed: Division by zero</strong> — drive usage percentage guards against zero total space',
+                    '<strong>Fixed: ID collisions</strong> — unique ID generator prevents duplicate IDs on rapid additions',
+                    '<strong>Fixed: Missing drive validation</strong> — cannot add a game without selecting a drive first',
+                    '<strong>Fixed: Remove drive guard</strong> — confirm dialog no longer shows "undefined" for deleted drives',
+                    '<strong>Fixed: Service Worker</strong> — skipWaiting() now inside waitUntil chain to prevent cache race',
+                    '<strong>Fixed: Sync prompt heading</strong> — changed h2 to h3 for consistent modal styling',
+                    'Removed dead localStorage references (ns_lastTab)',
+                    'Removed Quick Actions and Recently Updated from Overview',
+                    'Scroll position resets to top on page load',
+                ]
+            },
+            {
+                version: '1.0.3',
+                date: 'July 2026',
+                tag: 'stable',
+                tagLabel: 'Stable',
                 changes: [
                     '<strong>Update notification</strong> — toast alert when a new version is available, with link to changelog',
                     '<strong>PWA update fix</strong> — service worker now versioned and forces update check on page load',
@@ -2568,7 +2495,7 @@
 
     function exportData() {
         const data = {
-            version: '1.0.2',
+            version: '1.0.4',
             exportedAt: new Date().toISOString(),
             drives,
             games
@@ -2632,15 +2559,17 @@
         localStorage.removeItem('ns_drives');
         localStorage.removeItem('ns_games');
         localStorage.removeItem('ns_recent');
-        localStorage.removeItem('ns_lastTab');
+        localStorage.removeItem('ns_autoTheme');
+        localStorage.removeItem('ns_manualTheme');
         localStorage.removeItem('ns_dbx');
+        dbx = { appKey:'', accessToken:'', refreshToken:'', expiresAt:0, account:'', lastSync:'', lastSyncAt:0, dismissedRemoteAt:0, autoSync:false, autoUpload:false };
         renderAll();
         toast('All data has been reset', 'info');
     }
 
     function updateStorageInfo() {
         let total = 0;
-        for (const key of ['ns_drives', 'ns_games', 'ns_recent', 'ns_lastTab', 'ns_autoTheme', 'ns_manualTheme', 'ns_dbx']) {
+        for (const key of ['ns_drives', 'ns_games', 'ns_recent', 'ns_autoTheme', 'ns_manualTheme', 'ns_dbx']) {
             const val = localStorage.getItem(key);
             if (val) total += val.length * 2;
         }
@@ -2865,11 +2794,11 @@
     function openDbxSyncPrompt(remoteAt) {
         _dbxPendingRemoteAt = remoteAt;
         document.getElementById('dbxSyncWhen').textContent = new Date(remoteAt).toLocaleString();
-        document.getElementById('dbxSyncOverlay').classList.add('show');
+        document.getElementById('dbxSyncOverlay').classList.add('active');
     }
     function closeDbxSyncPrompt() {
         if (_dbxPendingRemoteAt) { dbx.dismissedRemoteAt = _dbxPendingRemoteAt; dbxSave(); }
-        document.getElementById('dbxSyncOverlay').classList.remove('show');
+        document.getElementById('dbxSyncOverlay').classList.remove('active');
     }
 
     function updateDropboxUI() {
@@ -2927,7 +2856,7 @@
     dropboxHandleRedirect();
     dropboxCheckForUpdates();
     document.getElementById('dbxSyncLater').onclick = closeDbxSyncPrompt;
-    document.getElementById('dbxSyncNow').onclick = () => { dropboxDownload(true); closeDbxSyncPrompt(); };
+    document.getElementById('dbxSyncNow').onclick = async () => { await dropboxDownload(true); closeDbxSyncPrompt(); };
     document.getElementById('dbxSyncOverlay').addEventListener('click', e => { if (e.target === document.getElementById('dbxSyncOverlay')) closeDbxSyncPrompt(); });
     switchTab(getSavedTab());
 
@@ -2953,6 +2882,7 @@
         }, 1000);
     }
     localStorage.setItem('ns_version', CURRENT_VERSION);
+    window.scrollTo(0, 0);
 </script>
 
 </body>
