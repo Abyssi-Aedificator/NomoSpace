@@ -1,4 +1,4 @@
-const CACHE = 'nomospace-v1.0.2';
+const CACHE = 'nomospace-v1.0.4';
 const ASSETS = [
     './',
     './index.html',
@@ -8,8 +8,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-    self.skipWaiting();
+    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
