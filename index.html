@@ -340,10 +340,6 @@
             z-index: 1;
         }
 
-        .tabs {
-            display: none;
-        }
-
         .tab-content {
             display: none;
             animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1504,7 +1500,7 @@
 </head>
 <body>
 
-<div class="dev-banner" id="devBanner" style="display:none">🔧 Development Build</div>
+<div class="dev-banner" id="devBanner">🔧 Development Build</div>
 
 <aside class="sidebar">
     <div class="sidebar-logo">
@@ -1725,7 +1721,7 @@
                 <div class="desc">Information about NomoSpace.</div>
                 <div class="setting-row">
                     <div class="setting-label">Version</div>
-                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.4</span>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;">1.0.5</span>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label">Storage Engine</div>
@@ -1796,10 +1792,12 @@
 
 <script>
     // ── Data ──
-    let drives = JSON.parse(localStorage.getItem('ns_drives') || '[]');
-    let games = JSON.parse(localStorage.getItem('ns_games') || '[]');
-    let recentActivity = JSON.parse(localStorage.getItem('ns_recent') || '[]');
-    const CURRENT_VERSION = '1.0.4';
+    let drives, games;
+    try { drives = JSON.parse(localStorage.getItem('ns_drives')); } catch { drives = null; }
+    if (!Array.isArray(drives)) drives = [];
+    try { games = JSON.parse(localStorage.getItem('ns_games')); } catch { games = null; }
+    if (!Array.isArray(games)) games = [];
+    const CURRENT_VERSION = '1.0.5';
 
     // ── Utilities ──
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1822,43 +1820,22 @@
     applyTheme();
     setInterval(() => { if (getAutoTheme()) applyTheme(); }, 60000);
 
-    // ── Hyper-Personalization ──
-    function getSavedTab() {
-        return 'overview';
-    }
-
-    function saveTab(tab) {
-    }
-
-    function addRecent(type, name) {
-        recentActivity.unshift({
-            type,
-            name,
-            time: Date.now()
-        });
-        if (recentActivity.length > 10) recentActivity = recentActivity.slice(0, 10);
-        localStorage.setItem('ns_recent', JSON.stringify(recentActivity));
-    }
-
-    function timeAgo(ts) {
-        const diff = Date.now() - ts;
-        const mins = Math.floor(diff / 60000);
-        if (mins < 1) return 'just now';
-        if (mins < 60) return mins + 'm ago';
-        const hrs = Math.floor(mins / 60);
-        if (hrs < 24) return hrs + 'h ago';
-        return Math.floor(hrs / 24) + 'd ago';
-    }
+    // ── Helpers ──
 
     // ── Save ──
     function save() {
-        localStorage.setItem('ns_drives', JSON.stringify(drives));
-        localStorage.setItem('ns_games', JSON.stringify(games));
+        try {
+            localStorage.setItem('ns_drives', JSON.stringify(drives));
+            localStorage.setItem('ns_games', JSON.stringify(games));
+        } catch (e) {
+            toast('Storage full — data may not persist', 'error');
+        }
         scheduleAutoUpload();
     }
 
     // ── Helpers ──
     function formatSize(gb) {
+        gb = Math.max(gb, 0);
         if (gb >= 1000) return (gb / 1000).toFixed(1) + ' TB';
         return gb.toFixed(1) + ' GB';
     }
@@ -1919,7 +1896,6 @@
         if (tabBtn) tabBtn.classList.add('active');
         const tabContent = document.getElementById('tab-' + tabName);
         if (tabContent) tabContent.classList.add('active');
-        saveTab(tabName);
         renderAll();
     }
 
@@ -1931,13 +1907,13 @@
     function addDrive() {
         const name = document.getElementById('driveName').value.trim();
         const total = parseFloat(document.getElementById('driveTotal').value);
-        const taken = parseFloat(document.getElementById('driveTaken').value) || 0;
+        const taken = Math.max(parseFloat(document.getElementById('driveTaken').value) || 0, 0);
         const type = document.getElementById('driveType').value;
         if (!name || !total || total <= 0) return toast('Invalid drive info', 'error');
+        if (taken > total) return toast('Taken space cannot exceed total', 'error');
 
         drives.push({ id: genId(), name, total, taken, type });
         save();
-        addRecent('drive', name);
         document.getElementById('driveName').value = '';
         document.getElementById('driveTotal').value = '';
         document.getElementById('driveTaken').value = '';
@@ -1986,11 +1962,11 @@
         document.getElementById('modalSave').onclick = () => {
             drive.name = document.getElementById('editDriveName').value.trim();
             drive.total = parseFloat(document.getElementById('editDriveTotal').value);
-            drive.taken = parseFloat(document.getElementById('editDriveTaken').value) || 0;
+            drive.taken = Math.max(parseFloat(document.getElementById('editDriveTaken').value) || 0, 0);
             drive.type = document.getElementById('editDriveType').value;
             if (drive.name && drive.total > 0) {
+                if (drive.taken > drive.total) return toast('Taken space cannot exceed total', 'error');
                 save();
-                addRecent('drive', drive.name);
                 closeModal();
                 toast(`Drive "${drive.name}" updated`);
                 renderAll();
@@ -2007,7 +1983,7 @@
         }
         grid.innerHTML = [...drives].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
             const { used, gameUsed, taken, percent } = getUsagePercent(d);
-            const free = d.total - used;
+            const free = Math.max(d.total - used, 0);
             const isWarning = percent >= 85;
             return `
                 <div class="drive-card glass${isWarning ? ' warning-pulse' : ''}" style="animation: fadeInUp 0.4s ease both;">
@@ -2022,7 +1998,7 @@
                         </div>
                         <div class="drive-details">
                             <div class="drive-name">${esc(d.name)}</div>
-                            <div class="drive-type">${d.type} <span class="drive-type-badge">${d.type}</span></div>
+                            <div class="drive-type"><span class="drive-type-badge">${d.type}</span></div>
                             <div class="drive-stats">
                                 <span class="used">${formatSize(used)} used</span>
                                 <span class="free">${formatSize(free)} free</span>
@@ -2047,7 +2023,6 @@
 
         games.push({ id: genId(), name, size, driveId, status });
         save();
-        addRecent('game', name);
         document.getElementById('gameName').value = '';
         document.getElementById('gameSize').value = '';
         toast(`"${name}" added`);
@@ -2066,7 +2041,6 @@
         if (game) {
             game.status = game.status === 'installed' ? 'uninstalled' : 'installed';
             save();
-            addRecent('game', game.name);
             toast(`"${game.name}" ${game.status === 'installed' ? 'installed' : 'uninstalled'}`);
             renderAll();
         }
@@ -2109,7 +2083,6 @@
             game.status = document.getElementById('editGameStatus').value;
             if (game.name && game.size > 0) {
                 save();
-                addRecent('game', game.name);
                 closeModal();
                 toast(`"${game.name}" updated`);
                 renderAll();
@@ -2243,7 +2216,7 @@
 
         breakdown.innerHTML = drives.map((d, i) => {
             const { used, percent: dPercent } = getUsagePercent(d);
-            const free = d.total - used;
+            const free = Math.max(d.total - used, 0);
             const driveGames = games.filter(g => g.driveId === d.id);
             const installedCount = driveGames.filter(g => g.status === 'installed').length;
             const requiredSize = driveGames.reduce((s, g) => s + g.size, 0);
@@ -2298,7 +2271,12 @@
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
+        if (e.key === 'Escape') {
+            if (document.getElementById('dbxSyncOverlay').classList.contains('active'))
+                closeDbxSyncPrompt();
+            else
+                closeModal();
+        }
     });
 
     // ── Enter key submit ──
@@ -2374,10 +2352,32 @@
     function renderChangelog() {
         const entries = [
             {
-                version: '1.0.4',
+                version: '1.0.5',
                 date: 'July 2026',
                 tag: 'latest',
                 tagLabel: 'Latest',
+                changes: [
+                    '<strong>Fixed: Corrupted data crash</strong> — app now recovers gracefully from corrupted localStorage',
+                    '<strong>Fixed: Expired token false positive</strong> — Dropbox refresh check no longer reports expired tokens as valid',
+                    '<strong>Fixed: First-connect sync prompt</strong> — prevents immediate sync prompt after initial Dropbox connection',
+                    '<strong>Fixed: Negative free space</strong> — drive cards and breakdown now guard against negative values',
+                    '<strong>Fixed: Escape key</strong> — Escape now closes the Dropbox sync prompt overlay',
+                    '<strong>Fixed: Storage quota</strong> — localStorage writes wrapped in try-catch to prevent crashes on full storage',
+                    '<strong>Fixed: Drive type display</strong> — removed duplicate type text, keeping only the styled badge',
+                    '<strong>Fixed: Drive taken validation</strong> — "Already Taken" cannot be negative or exceed total space',
+                    '<strong>Fixed: formatSize negative guard</strong> — formatSize no longer outputs negative values',
+                    '<strong>Fixed: Dropbox upload version</strong> — upload payload now uses current version constant',
+                    '<strong>Fixed: Disconnect data loss</strong> — disconnecting Dropbox now preserves lastSyncAt and dismissedRemoteAt',
+                    '<strong>Fixed: Service Worker activate</strong> — clients.claim() now inside waitUntil chain',
+                    'Removed dead code: addRecent, recentActivity, timeAgo, getSavedTab, saveTab',
+                    'Removed dead CSS: .tabs class',
+                ]
+            },
+            {
+                version: '1.0.4',
+                date: 'July 2026',
+                tag: 'stable',
+                tagLabel: 'Stable',
                 changes: [
                     '<strong>Fixed: Dropbox sync prompt</strong> — overlay now correctly toggles visibility (class mismatch fix)',
                     '<strong>Fixed: Manual theme override</strong> — auto-theme interval no longer overwrites user-selected theme',
@@ -2495,7 +2495,7 @@
 
     function exportData() {
         const data = {
-            version: '1.0.4',
+            version: '1.0.5',
             exportedAt: new Date().toISOString(),
             drives,
             games
@@ -2555,10 +2555,8 @@
         if (!confirm('Are you really sure? This is irreversible.')) return;
         drives = [];
         games = [];
-        recentActivity = [];
         localStorage.removeItem('ns_drives');
         localStorage.removeItem('ns_games');
-        localStorage.removeItem('ns_recent');
         localStorage.removeItem('ns_autoTheme');
         localStorage.removeItem('ns_manualTheme');
         localStorage.removeItem('ns_dbx');
@@ -2569,7 +2567,7 @@
 
     function updateStorageInfo() {
         let total = 0;
-        for (const key of ['ns_drives', 'ns_games', 'ns_recent', 'ns_autoTheme', 'ns_manualTheme', 'ns_dbx']) {
+        for (const key of ['ns_drives', 'ns_games', 'ns_autoTheme', 'ns_manualTheme', 'ns_dbx']) {
             const val = localStorage.getItem(key);
             if (val) total += val.length * 2;
         }
@@ -2588,7 +2586,7 @@
     const DBX_PATH = '/nomospace-backup.json';
     let dbx = JSON.parse(localStorage.getItem(DBX_KEY) || 'null') ||
         { appKey: '', accessToken: '', refreshToken: '', expiresAt: 0, account: '', lastSync: '', lastSyncAt: 0, dismissedRemoteAt: 0, autoSync: false, autoUpload: false };
-    const dbxSave = () => localStorage.setItem(DBX_KEY, JSON.stringify(dbx));
+    const dbxSave = () => { try { localStorage.setItem(DBX_KEY, JSON.stringify(dbx)); } catch (e) { /* quota exceeded */ } };
     const dbxRedirectUri = () => location.origin + location.pathname;
 
     let _syncTimer = null, _skipAutoUpload = false, _lastUploadedState = '', _syncing = false;
@@ -2660,6 +2658,7 @@
             dbx.expiresAt = Date.now() + (j.expires_in || 14400) * 1000; dbxSave();
             await dropboxFetchAccount();
             toast('Dropbox connected');
+            dbx.lastSyncAt = Date.now(); dbxSave();
             dropboxCheckForUpdates();
         } catch (err) { toast('Dropbox connection failed: ' + err.message, 'error'); }
         updateDropboxUI();
@@ -2667,7 +2666,7 @@
 
     async function dropboxRefreshIfNeeded() {
         if (dbx.accessToken && Date.now() < dbx.expiresAt - 30000) return true;
-        if (!dbx.refreshToken || !dbx.appKey) return !!dbx.accessToken;
+        if (!dbx.refreshToken || !dbx.appKey) return false;
         try {
             const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
                 method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2713,7 +2712,7 @@
             toast(silent ? 'Auto-synced to Dropbox (mock)' : 'Uploaded to Dropbox (mock)');
             return;
         }
-        const payload = { app: 'NomoSpace', version: 1, exportedAt: new Date().toISOString(), data: { drives, games } };
+        const payload = { app: 'NomoSpace', version: CURRENT_VERSION, exportedAt: new Date().toISOString(), data: { drives, games } };
         try {
             const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
                 method: 'POST', headers: {
@@ -2755,7 +2754,7 @@
 
     async function dropboxDisconnect() {
         if (!confirm('Disconnect Dropbox? You can reconnect any time with your App key.')) return;
-        dbx = { appKey: dbx.appKey, accessToken: '', refreshToken: '', expiresAt: 0, account: '', lastSync: '', lastSyncAt: 0, dismissedRemoteAt: 0, autoSync: false, autoUpload: false };
+        dbx = { appKey: dbx.appKey, accessToken: '', refreshToken: '', expiresAt: 0, account: '', lastSync: '', lastSyncAt: dbx.lastSyncAt, dismissedRemoteAt: dbx.dismissedRemoteAt, autoSync: false, autoUpload: false };
         dbxSave(); updateDropboxUI(); toast('Dropbox disconnected', 'info');
     }
 
@@ -2858,7 +2857,7 @@
     document.getElementById('dbxSyncLater').onclick = closeDbxSyncPrompt;
     document.getElementById('dbxSyncNow').onclick = async () => { await dropboxDownload(true); closeDbxSyncPrompt(); };
     document.getElementById('dbxSyncOverlay').addEventListener('click', e => { if (e.target === document.getElementById('dbxSyncOverlay')) closeDbxSyncPrompt(); });
-    switchTab(getSavedTab());
+    switchTab('overview');
 
     // ── PWA Service Worker ──
     if ('serviceWorker' in navigator) {
